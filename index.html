@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500&family=Jost:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#2a2a2a;--panel:#323232;--line:#3c3c3c;--ink:#ecebe7;--mute:#9b9994;--faint:#5e5d5a;
@@ -126,8 +126,8 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .big3 span{font-size:12px;color:var(--mute);margin-top:8px}
 .bodywrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:24px}
 .bodywrap figure{margin:0;text-align:center}
-.bodywrap figcaption{font-family:"Jost",sans-serif;font-size:11px;letter-spacing:.2em;color:var(--mute)}
-.bodywrap svg{width:100%;height:auto;max-height:380px}
+.bodywrap figcaption{font-family:"Cinzel","Trajan Pro",Georgia,serif;font-size:11px;letter-spacing:.24em;color:var(--mute)}
+.bodywrap svg{width:100%;height:auto;max-height:420px}
 .ptitle{font-size:13px;color:var(--mute);margin:0 0 10px}
 .prow{padding:10px 0 12px}
 .prow .t{display:flex;align-items:center;gap:10px}
@@ -136,7 +136,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .prow .v{margin-left:auto;font-size:20px}
 .prow .df{width:44px;text-align:right;font-family:"Jost",sans-serif;font-size:13px;color:var(--faint)}
 .track{position:relative;height:5px;background:var(--line);border-radius:3px;margin-top:8px}
-.track .f{position:absolute;left:0;top:0;bottom:0;background:var(--hi);border-radius:3px}
+.track .f{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8a6a24,#c9a046 55%,#f0d488);border-radius:3px}
 .track .p{position:absolute;top:-4px;bottom:-4px;width:1.5px;background:var(--mute)}
 .note{font-size:12px;color:var(--faint);margin-top:6px}
 
@@ -483,7 +483,7 @@ function renderCal(){
 
 /* ---------- 人体図 ---------- */
 function fillOf(v){var p=Math.round(Math.max(0,Math.min(1,v))*100);return 'style="fill:color-mix(in srgb, var(--hi) '+p+'%, var(--lo))"';}
-// 新しい人体図（左半身を描いて左右反転）
+// 人体図（左半身を描いて左右反転）
 function mirrorG(s){return s+'<g transform="matrix(-1 0 0 1 200 0)">'+s+'</g>';}
 var CONTOUR='M100,10 C89,10 86,19 86,30 C86,40 88,47 91,52 L90,62 C84,68 74,73 62,79 C49,84 42,93 41,106 C40,120 39,135 39,148 C39,152 40,158 40,162 C37,180 33,200 31,218 L30,226 C28,236 28,246 32,252 C35,256 39,252 40,246 C41,238 42,232 43,226 L44,222 C47,206 50,190 52,174 L54,166 C56,152 58,138 60,126 L62,122 C62,140 64,156 66,170 C67,186 66,196 66,206 C64,218 62,226 62,236 C60,262 61,290 64,318 L66,330 C64,346 62,366 64,384 L68,410 C66,420 64,428 70,430 L92,430 C94,426 92,420 88,414 L86,404 C87,388 86,368 86,350 L88,334 C90,312 94,288 98,262 L100,256';
 var FRONT={
@@ -514,36 +514,49 @@ var BACK={
        'M70,336 C64,348 63,364 67,378 C70,384 76,380 78,372 C80,360 78,346 76,338 C74,332 72,332 70,336 Z',
        'M80,338 C80,352 81,366 84,376 C88,380 91,372 90,362 C90,350 88,340 84,334 C82,332 80,334 80,338 Z']
 };
-var ANG={front:{"肩":[70],"胸":[12],"背中":[25],"腕":[88,80],"腹・体幹":[null,null,null,null,62],"脚":[86,92,70,60,88,92]},
- back:{"背中":[28,58,90],"肩":[70],"腕":[90,80],"臀":[32],"脚":[92,88,90,90]}};
-function bbox(d){var n=d.match(/-?\d+(\.\d+)?,-?\d+(\.\d+)?/g)||[];var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;n.forEach(function(p){var a=p.split(",").map(Number);x0=Math.min(x0,a[0]);x1=Math.max(x1,a[0]);y0=Math.min(y0,a[1]);y1=Math.max(y1,a[1]);});return [x0,y0,x1,y1];}
-function fibers(d,ang,id){
-  if(ang==null) return "";
-  var b=bbox(d),cx=(b[0]+b[2])/2,cy=(b[1]+b[3])/2,r=Math.hypot(b[2]-b[0],b[3]-b[1])/2+2,t=ang*Math.PI/180;
-  var dx=Math.cos(t),dy=Math.sin(t),nx=-dy,ny=dx,out="";
-  for(var k=-r;k<=r;k+=2.2){var px=cx+nx*k,py=cy+ny*k;out+="M"+(px-dx*r).toFixed(1)+","+(py-dy*r).toFixed(1)+"L"+(px+dx*r).toFixed(1)+","+(py+dy*r).toFixed(1);}
-  return '<clipPath id="'+id+'"><path d="'+d+'"/></clipPath><path d="'+out+'" clip-path="url(#'+id+')" stroke="var(--bg)" stroke-opacity=".22" stroke-width=".5" fill="none"/>';
-}
+/* ギリシャ彫刻風：大理石の像に、鍛えた部位ほど金を施す */
 function figure(side,lv,uid){
-  var M=side==="front"?FRONT:BACK;
-  var defs='<defs><filter id="gl'+uid+'" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
-    '<linearGradient id="sh'+uid+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>';
-  var sil='<path d="'+CONTOUR+' L100,430 L100,8 Z" fill="var(--sil)"/>';
-  sil=mirrorG(sil);
-  var line=mirrorG('<path d="'+CONTOUR+'" fill="none" stroke="var(--mute)" stroke-opacity=".5" stroke-width="1.1" stroke-linejoin="round"/>');
-  var det=side==="front"?
-    mirrorG('<path d="M95,80 C86,82 76,82 66,84" fill="none" stroke="var(--mute)" stroke-opacity=".35" stroke-width=".7"/><ellipse cx="80" cy="330" rx="6" ry="7" fill="none" stroke="var(--mute)" stroke-opacity=".4" stroke-width=".8"/>'):
-    '<path d="M100,60 V214" stroke="var(--mute)" stroke-opacity=".35" stroke-width=".7"/>'+mirrorG('<path d="M80,328 C76,332 76,336 80,338" fill="none" stroke="var(--mute)" stroke-opacity=".35" stroke-width=".7"/>');
-  var hair=side==="front"?'<path d="M86,27 C85,15 92,8 100,8 C108,8 115,15 114,27 C112,20 106,16 100,16 C94,16 88,20 86,27 Z" fill="var(--lo)"/>':
-    '<path d="M86,28 C85,15 92,8 100,8 C108,8 115,15 114,28 C114,36 112,42 110,45 C104,42 96,42 90,45 C88,42 86,36 86,28 Z" fill="var(--lo)"/>';
+  var M=side==="front"?FRONT:BACK,u=uid+side[0];
+  var defs='<defs>'+
+    '<radialGradient id="mbl'+u+'" cx="38%" cy="22%" r="85%"><stop offset="0" stop-color="#f6f1e8"/><stop offset=".55" stop-color="#ddd5c8"/><stop offset="1" stop-color="#a39a8c"/></radialGradient>'+
+    '<radialGradient id="rel'+u+'" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#3b352d" stop-opacity=".28"/></radialGradient>'+
+    '<linearGradient id="gld'+u+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d98b"/><stop offset=".5" stop-color="#c9a046"/><stop offset="1" stop-color="#8a6a24"/></linearGradient>'+
+    '<filter id="vein'+u+'" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.011 0.04" numOctaves="3" seed="11"/><feColorMatrix type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.39  0 0 0 0 0.35  -3.2 0 0 0 1.55"/></filter>'+
+    '<filter id="grv'+u+'"><feGaussianBlur stdDeviation=".9"/></filter>'+
+    '<filter id="sft'+u+'"><feGaussianBlur stdDeviation=".35"/></filter>'+
+    '<filter id="shd'+u+'" x="-20%" y="-10%" width="140%" height="125%"><feDropShadow dx="3" dy="4" stdDeviation="4" flood-color="#000" flood-opacity=".45"/></filter>'+
+    '<filter id="glw'+u+'" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feColorMatrix in="b" type="matrix" values="0 0 0 0 .95  0 0 0 0 .78  0 0 0 0 .35  0 0 0 .9 0" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
+    '<clipPath id="bd'+u+'"><path d="'+CONTOUR+' L100,430 L100,8 Z"/><path transform="matrix(-1 0 0 1 200 0)" d="'+CONTOUR+' L100,430 L100,8 Z"/></clipPath>'+
+    '<linearGradient id="pl'+u+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e4ddd1"/><stop offset="1" stop-color="#9c9385"/></linearGradient>'+
+    '</defs>';
+  // 台座
+  var plinth='<rect x="46" y="429" width="108" height="5" rx="1" fill="url(#pl'+u+')"/><rect x="52" y="434" width="96" height="16" fill="url(#pl'+u+')"/><rect x="48" y="450" width="104" height="5" rx="1" fill="url(#pl'+u+')"/>'+
+    '<text x="100" y="445.5" text-anchor="middle" font-family="Cinzel,\'Trajan Pro\',Georgia,serif" font-size="7.2" letter-spacing="2.4" fill="#6f665a">'+(side==="front"?"ΠΡΟΣΩΠΟΝ":"ΝΩΤΟΝ")+'</text>';
+  // 像本体：大理石＋石目
+  var body='<g filter="url(#shd'+u+')">'+mirrorG('<path d="'+CONTOUR+' L100,430 L100,8 Z" fill="url(#mbl'+u+')"/>')+'</g>'+
+    '<rect x="0" y="0" width="200" height="432" filter="url(#vein'+u+')" clip-path="url(#bd'+u+')" opacity=".55"/>';
+  // 髪（巻き毛）と顔の陰影
+  var curls="",cs=side==="front"?[[88,24],[92,19],[97,16],[103,16],[108,19],[112,24],[90,14],[100,11],[110,14]]:[[88,22],[92,16],[100,12],[108,16],[112,22],[90,30],[96,25],[104,25],[110,30],[93,38],[100,34],[107,38],[100,43]];
+  curls=side==="front"?'<path d="M85.5,29 C84,14 92,7 100,7 C108,7 116,14 114.5,29 C112,21 106,17.5 100,17.5 C94,17.5 88,21 85.5,29 Z" fill="#cfc6b8"/>':
+    '<path d="M85.5,30 C84,14 92,7 100,7 C108,7 116,14 114.5,30 C114,38 112,43 110,46 C104,43 96,43 90,46 C88,43 86,38 85.5,30 Z" fill="#cfc6b8"/>';
+  cs.forEach(function(c){curls+='<path d="M'+(c[0]-2.4)+','+(c[1]+.6)+' a2.5,2.5 0 1 1 3.6,2" fill="none" stroke="#6f6659" stroke-opacity=".6" stroke-width=".7" stroke-linecap="round"/>';});
+  var face=side==="front"?'<g fill="none" stroke="#6b6357" stroke-opacity=".45" stroke-width=".7" filter="url(#sft'+u+')"><path d="M92,27 C94,25 97,25 98.5,26.5 M101.5,26.5 C103,25 106,25 108,27"/><path d="M100,27 L99,35 C100,36 101,36 102,35"/><path d="M96.5,40 C98.5,41 101.5,41 103.5,40"/></g>':'';
+  // 筋肉：彫り込み（溝の影）＋金＋起伏の光
   var mus="";
   Object.keys(M).forEach(function(p){
-    var v=lv[p]||0,pct=Math.round(Math.max(0,Math.min(1,v))*100);
-    var fill='fill:color-mix(in srgb, var(--hi) '+pct+'%, var(--lo))';
-    var g=M[p].map(function(d,i){var id="c"+uid+side[0]+PARTS.indexOf(p)+"_"+i;return '<path d="'+d+'" style="'+fill+'"/>'+fibers(d,(ANG[side][p]||[])[i],id)+'<path d="'+d+'" fill="url(#sh'+uid+')"/><path d="'+d+'" fill="none" stroke="var(--bg)" stroke-opacity=".55" stroke-width=".7"/>';}).join("");
-    mus+='<g'+(v>=.8?' filter="url(#gl'+uid+')"':'')+'>'+mirrorG(g)+'</g>';
+    var v=Math.max(0,Math.min(1,lv[p]||0));
+    var g=M[p].map(function(d){
+      return '<path d="'+d+'" fill="none" stroke="#3f392f" stroke-opacity=".42" stroke-width="1.3" filter="url(#grv'+u+')"/>'+
+        (v>.04?'<path d="'+d+'" fill="url(#gld'+u+')" fill-opacity="'+(v*0.88).toFixed(2)+'" style="mix-blend-mode:multiply"/>':'')+
+        '<path d="'+d+'" fill="url(#rel'+u+')"/>';
+    }).join("");
+    mus+='<g'+(v>=.8?' filter="url(#glw'+u+')"':'')+'>'+mirrorG(g)+'</g>';
   });
-  return '<svg viewBox="0 0 200 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+(side==="front"?"前面":"背面")+'の部位別セット数">'+defs+sil+hair+det+mus+line+'</svg>';
+  var det=side==="front"?
+    mirrorG('<path d="M95,80 C86,82 76,82 66,84" fill="none" stroke="#5d564b" stroke-opacity=".35" stroke-width=".8" filter="url(#sft'+u+')"/><ellipse cx="80" cy="330" rx="6" ry="7" fill="url(#rel'+u+')" stroke="#5d564b" stroke-opacity=".25" stroke-width=".7"/>'):
+    '<path d="M100,60 V214" stroke="#4a443a" stroke-opacity=".45" stroke-width="1.2" filter="url(#grv'+u+')"/>';
+  var edge=mirrorG('<path d="'+CONTOUR+'" fill="none" stroke="#6e665a" stroke-opacity=".55" stroke-width=".9" stroke-linejoin="round"/>');
+  return '<svg viewBox="0 0 200 458" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+(side==="front"?"前面":"背面")+'の部位別セット数（金色が濃いほどセット数が多い）">'+defs+plinth+body+det+mus+edge+curls+face+'</svg>';
 }
 
 /* ---------- 部位 ---------- */
@@ -557,10 +570,10 @@ function renderParts(){
   h+='<p class="ptitle">部位別セット数</p>';
   PARTS.forEach(function(p){
     var v=st.parts[p],b=pv.parts[p],df=v-b;
-    h+='<div class="prow"><div class="t"><span class="sw" '+fillOf(lv[p]).replace("fill:","background:")+'></span><span class="n">'+p+'</span><span class="v">'+v+'</span><span class="df">'+(df>0?"+"+df:df<0?"−"+(-df):"±0")+'</span></div>'+
+    h+='<div class="prow"><div class="t"><span class="sw" style="background:color-mix(in srgb, #c9a046 '+Math.round(lv[p]*100)+'%, var(--lo))"></span><span class="n">'+p+'</span><span class="v">'+v+'</span><span class="df">'+(df>0?"+"+df:df<0?"−"+(-df):"±0")+'</span></div>'+
        '<div class="track"><div class="f" style="width:'+(v/max*100)+'%"></div><div class="p" style="left:'+(b/max*100)+'%"></div></div></div>';
   });
-  h+='<p class="note">細い縦線は前月のセット数。部位の割り当ては「設定」で変えられます。</p>';
+  h+='<p class="note">金色が濃い部位ほど、その月のセット数が多いことを示します。細い縦線は前月のセット数。部位の割り当ては「設定」で変えられます。</p>';
   app.innerHTML=h;
 }
 
