@@ -606,11 +606,23 @@ function stepWeight(name,w,dir){
   return l[Math.max(0,Math.min(l.length-1,i+dir))];
 }
 function upperOf(tr){var m=String(tr||"").match(/(\d+)\s*$/);return m?Math.min(MAX_REPS,Number(m[1])):null;}
+/* その日にやった内容が、どの曜日のメニューに一番近いか（曜日をずらして行った日も正しく扱う） */
+function menuOf(ds,day){
+  var p=program();if(!p) return null;
+  var names=(day.entries||[]).filter(function(e){return doneSets(e).length;}).map(function(e){return e.ex;});
+  var best=null,bestN=0,own=String(parse(ds).getDay());
+  Object.keys(p.days).forEach(function(k){
+    var n=p.days[k].items.filter(function(it){return names.indexOf(it[0])>=0;}).length;
+    if(n>bestN||(n===bestN&&n>0&&k===own)){best=k;bestN=n;}
+  });
+  return bestN>=3?best:null;
+}
 function findLast(name,beforeDate,sameDow){
+  var want=String(parse(beforeDate).getDay());
   for(var k=1;k<=84;k++){
-    if(sameDow&&k%7) continue;
     var ds=addDays(beforeDate,-k),m=docs["m-"+ymOf(ds)];
     if(!m||!m.days||!m.days[ds]) continue;
+    if(sameDow){var mk=menuOf(ds,m.days[ds]);if(mk===null?k%7:mk!==want) continue;}
     var es=m.days[ds].entries||[];
     for(var i=0;i<es.length;i++) if(es[i].ex===name&&doneSets(es[i]).length) return {date:ds,entry:es[i]};
   }
