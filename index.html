@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>筋トレ記録</title>
+<meta name="theme-color" content="#2a2a2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="筋トレ記録">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
@@ -241,18 +246,43 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){retur
 /* ---------- 保存 ---------- */
 var docs={};          // name -> data
 var loaded={};        // name -> true
+/* 端末内保存（単体版）：IndexedDB */
+var idb={h:null,
+  open:function(){
+    var self=this;
+    return new Promise(function(res,rej){
+      if(!window.indexedDB) return rej(new Error("no indexedDB"));
+      var r=indexedDB.open("kintore",1);
+      r.onupgradeneeded=function(){r.result.createObjectStore("docs");};
+      r.onsuccess=function(){self.h=r.result;res();};
+      r.onerror=function(){rej(r.error);};
+    });
+  },
+  tx:function(mode,fn){
+    var self=this;
+    return new Promise(function(res,rej){
+      var t=self.h.transaction("docs",mode),st=t.objectStore("docs"),out;
+      var q=fn(st);if(q) q.onsuccess=function(){out=q.result;};
+      t.oncomplete=function(){res(out);};t.onerror=function(){rej(t.error);};t.onabort=function(){rej(t.error);};
+    });
+  },
+  get:function(n){return this.tx("readonly",function(st){return st.get(n);});},
+  set:function(n,d){return this.tx("readwrite",function(st){st.put(d,n);});}
+};
 var store={mode:"local",db:null,uid:null,
   path:function(n){return "data/users/"+this.uid+"/"+n;},
   localGet:function(n){try{var v=localStorage.getItem("kintore:"+n);return v?JSON.parse(v):null;}catch(e){return null;}},
   localSet:function(n,d){try{localStorage.setItem("kintore:"+n,JSON.stringify(d));}catch(e){}},
   get:function(n){
     var self=this;
+    if(self.mode==="idb") return idb.get(n).then(function(v){return v!=null?v:self.localGet(n);},function(){return self.localGet(n);});
     if(self.mode!=="db") return Promise.resolve(self.localGet(n));
     return self.db.doc(self.path(n)).get().then(function(s){
       return s.exists?JSON.parse(JSON.stringify(s.data())):null;
     }).catch(function(){return self.localGet(n);});
   },
   set:function(n,d){
+    if(this.mode==="idb") return idb.set(n,JSON.parse(JSON.stringify(d)));
     this.localSet(n,d);
     if(this.mode!=="db") return Promise.resolve();
     return this.db.doc(this.path(n)).set(d);
@@ -260,7 +290,7 @@ var store={mode:"local",db:null,uid:null,
 };
 var timers={},busy={};
 function markDirty(n){
-  store.localSet(n,docs[n]);
+  if(store.mode!=="idb") store.localSet(n,docs[n]);
   clearTimeout(timers[n]);
   timers[n]=setTimeout(function(){flush(n);},700);
 }
@@ -277,7 +307,8 @@ var statusMsg=null;
 function setStatus(m){statusMsg=m;var el=document.getElementById("status");if(el) el.textContent=statusText();}
 function statusText(){
   if(statusMsg) return statusMsg;
-  return store.mode==="db"?"記録はClaudeのアカウントに保存されています（スマホでもPCでも同じ記録）。":"記録はこの端末のブラウザに保存されています。";
+  if(store.mode==="db") return "記録はClaudeのアカウントに保存されています（スマホでもPCでも同じ記録）。";
+  return "記録はこの端末に保存されています。機種変更や削除に備えて、設定からバックアップを書き出してください。";
 }
 
 function ensure(n,def){
@@ -530,9 +561,10 @@ function renderMore(){
   });
   h+="</div></div></section>";
   h+='<section class="sec"><h2>バックアップ</h2><p>全期間の記録をJSONで書き出せます。ライフログへの集約にも使えます。</p><div class="actions" style="margin:0">'+
-     (downloadsCap?'<button class="btn" data-act="export">書き出す</button>':"")+'<button class="btn" data-act="showJson">JSONを表示</button></div>'+
+     (downloadsCap||!window.claude?'<button class="btn" data-act="export">ファイルに書き出す</button>':"")+'<button class="btn" data-act="showJson">JSONを表示</button></div>'+
      '<textarea id="json" style="display:none;margin-top:10px;min-height:160px;font-family:Jost,monospace;font-size:12px" aria-label="バックアップJSON"></textarea>'+
-     '<label class="lbl" for="imp">バックアップから戻す（JSONを貼り付け）</label><textarea id="imp" placeholder="{&quot;months&quot;: …}"></textarea>'+
+     '<label class="lbl" for="impFile">バックアップから戻す</label><input type="file" id="impFile" data-f="file" accept=".json,application/json" style="font-size:13px;color:var(--mute)">'+
+     '<label class="lbl" for="imp">またはJSONを貼り付け</label><textarea id="imp" placeholder="{&quot;months&quot;: …}"></textarea>'+
      '<div class="actions"><button class="btn" data-act="import">読み込む</button></div><p id="impmsg"></p></section>';
   app.innerHTML=h;
 }
@@ -673,7 +705,7 @@ function handleAct(b){
     if(a==="rest"&&day.rest) day.run=day.run; 
     saveDay(curDate);renderRec();return;
   }
-  day=getDay(curDate,true);
+  if(["showJson","export","import"].indexOf(a)<0) day=getDay(curDate,true);
   if(a==="delEntry"){
     if(!confirm(day.entries[i].ex+"をこの日の記録から削除しますか？")) return;
     day.entries.splice(i,1);saveDay(curDate);renderRec();return;
@@ -683,10 +715,15 @@ function handleAct(b){
   if(a==="fill"){var en=day.entries[i],s0=en.sets[0];if(!s0) return;en.sets.forEach(function(s){s.w=s0.w;s.r=s0.r;});saveDay(curDate);renderRec();return;}
   if(a==="feel"){var ee=day.entries[i];ee.feel=ee.feel===b.dataset.v?"":b.dataset.v;saveDay(curDate);renderRec();return;}
   if(a==="showJson"){buildBackup().then(function(bk){var t=document.getElementById("json");t.style.display="block";t.value=JSON.stringify(bk,null,1);t.select();});return;}
-  if(a==="export"){buildBackup().then(function(bk){return downloadsCap.save({filename:"kintore-backup-"+today+".json",data:JSON.stringify(bk,null,1)});}).catch(function(){});return;}
+  if(a==="export"){buildBackup().then(function(bk){
+    var name="kintore-backup-"+today+".json",data=JSON.stringify(bk,null,1);
+    if(downloadsCap) return downloadsCap.save({filename:name,data:data});
+    var url=URL.createObjectURL(new Blob([data],{type:"application/json"})),a2=document.createElement("a");
+    a2.href=url;a2.download=name;document.body.appendChild(a2);a2.click();a2.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  }).catch(function(){});return;}
   if(a==="import"){
     var msg=document.getElementById("impmsg"),bk;
-    try{bk=JSON.parse(document.getElementById("imp").value);}catch(e){msg.textContent="JSONとして読み取れませんでした。書き出した内容をそのまま貼り付けてください。";return;}
+    try{bk=JSON.parse(b.dataset.json||document.getElementById("imp").value);}catch(e){msg.textContent="JSONとして読み取れませんでした。書き出した内容をそのまま貼り付けてください。";return;}
     if(!bk||!bk.months){msg.textContent="このアプリのバックアップではありません（months がありません）。";return;}
     if(!confirm("バックアップの内容で、含まれている月の記録を置き換えます。よろしいですか？")) return;
     if(bk.settings&&bk.settings.exercises){docs.settings=bk.settings;loaded.settings=true;markDirty("settings");}
@@ -718,13 +755,24 @@ app.addEventListener("change",function(ev){
       saveDay(curDate);renderRec();return;
     }
     s.w=v===""?"":Number(v);saveDay(curDate);
+  }else if(t.id==="impFile"&&t.files&&t.files[0]){
+    t.files[0].text().then(function(txt){var bt=document.querySelector('[data-act="import"]');bt.dataset.json=txt;handleAct(bt);delete bt.dataset.json;t.value="";});
   }else if(f==="exp"||f==="exu"){
     var e=exList()[+t.dataset.i];if(f==="exp") e.p=t.value; else e.u=t.value;markDirty("settings");
   }
 });
 
 /* ---------- 起動 ---------- */
-go();
+if(window.claude&&typeof window.claude.use==="function"){
+  go();
+}else{
+  // 単体版：ホーム画面アプリとオフライン表示
+  var lk=document.createElement("link");lk.rel="manifest";lk.href="manifest.webmanifest";document.head.appendChild(lk);
+  var ap=document.createElement("link");ap.rel="apple-touch-icon";ap.href="icons/icon-180.png";document.head.appendChild(ap);
+  if("serviceWorker" in navigator&&location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(function(){});
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
+  idb.open().then(function(){store.mode="idb";},function(){}).then(go);
+}
 (function connect(){
   if(!window.claude||typeof window.claude.use!=="function") return;
   window.claude.use("downloads").then(function(d){downloadsCap=d;if(view==="more") rerender();},function(){});
