@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500&family=Jost:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#2a2a2a;--panel:#323232;--line:#3c3c3c;--ink:#ecebe7;--mute:#9b9994;--faint:#5e5d5a;
@@ -124,10 +124,11 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .big3 div{display:flex;flex-direction:column}
 .big3 b{font-family:"Jost",sans-serif;font-size:52px;font-weight:300;line-height:1}
 .big3 span{font-size:12px;color:var(--mute);margin-top:8px}
-.bodywrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:24px}
-.bodywrap figure{margin:0;text-align:center}
-.bodywrap figcaption{font-family:"Cinzel","Trajan Pro",Georgia,serif;font-size:11px;letter-spacing:.24em;color:var(--mute)}
-.bodywrap svg{width:100%;height:auto;max-height:420px}
+.seg{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;width:max-content;margin:0 auto 10px;padding:2px}
+.seg button{background:none;border:none;border-radius:999px;padding:5px 18px;font-size:13px;color:var(--mute)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.bodyfig{margin:0 -10px 24px;text-align:center}
+.bodyfig svg{width:100%;height:auto;max-height:540px}
 .ptitle{font-size:13px;color:var(--mute);margin:0 0 10px}
 .prow{padding:10px 0 12px}
 .prow .t{display:flex;align-items:center;gap:10px}
@@ -136,7 +137,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .prow .v{margin-left:auto;font-size:20px}
 .prow .df{width:44px;text-align:right;font-family:"Jost",sans-serif;font-size:13px;color:var(--faint)}
 .track{position:relative;height:5px;background:var(--line);border-radius:3px;margin-top:8px}
-.track .f{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#8a6a24,#c9a046 55%,#f0d488);border-radius:3px}
+.track .f{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#e7b9b1,#b3202c);border-radius:3px}
 .track .p{position:absolute;top:-4px;bottom:-4px;width:1.5px;background:var(--mute)}
 .note{font-size:12px;color:var(--faint);margin-top:6px}
 
@@ -366,7 +367,7 @@ function setsSummary(sets,unit){
 
 /* ---------- 画面状態 ---------- */
 var today=fmt(new Date());
-var view="rec",curDate=today,statYm=ymOf(today);
+var view="rec",curDate=today,statYm=ymOf(today),bodySide="front";
 var app=document.getElementById("app");
 
 function weekInfo(dateStr){
@@ -483,7 +484,7 @@ function renderCal(){
 
 /* ---------- 人体図 ---------- */
 function fillOf(v){var p=Math.round(Math.max(0,Math.min(1,v))*100);return 'style="fill:color-mix(in srgb, var(--hi) '+p+'%, var(--lo))"';}
-/* 人体図：関節ごとに部品を組み立てる彫像（コントラポスト） */
+/* 人体図：部品を関節でつないだ筋肉解剖図 */
 var PART_SHAPES={
  torso:'M92,48 L92,62 C84,68 74,73 66,79 C59,84 57,93 60,102 C63,119 67,135 70,150 C72,166 72,180 71,192 C70,206 66,218 66,231 C66,241 71,249 80,254 C88,258 96,256 100,250 C104,256 112,258 120,254 C129,249 134,241 134,231 C134,218 130,206 129,192 C128,180 128,166 130,150 C133,135 137,119 140,102 C143,93 141,84 134,79 C126,73 116,68 108,62 L108,48 Z',
  head:'M100,12 C89,12 86,22 86,32 C86,42 90,50 96,54 C98,55 102,55 104,54 C110,50 114,42 114,32 C114,22 111,12 100,12 Z',
@@ -492,42 +493,42 @@ var PART_SHAPES={
  thigh:'M-16,-4 C-19,28 -16,62 -10,94 C-6,102 6,102 10,94 C14,64 14,30 11,-4 C6,-12 -11,-12 -16,-4 Z',
  shin:'M-10,0 C-13,20 -11,44 -7,72 L-6,86 C-9,92 -13,98 -7,101 L13,101 C15,97 11,92 6,86 L7,72 C10,44 10,18 9,0 C5,-5 -6,-5 -10,0 Z'
 };
-/* 筋肉：[部位, パス, 面(front/back/both)] 部品ごとのローカル座標 */
+/* 筋肉：[部位, パス, 面(front/back/both), 筋線維の角度] 部品ごとのローカル座標 */
 var MUS={
  torso:[
-  ["胸",'M98,90 C88,85 76,86 68,92 C64,98 64,106 66,112 C71,120 81,124 91,124 C96,123 98,119 98,113 Z',"front"],
-  ["胸",'M102,90 C112,85 124,86 132,92 C136,98 136,106 134,112 C129,120 119,124 109,124 C104,123 102,119 102,113 Z',"front"],
-  ["背中",'M93,62 C86,68 77,74 68,79 C78,83 88,83 97,78 L97,64 Z',"front"],["背中",'M107,62 C114,68 123,74 132,79 C122,83 112,83 103,78 L103,64 Z',"front"],
-  ["腹・体幹",'M89.5,128 h9 v15 h-9 Z',"front"],["腹・体幹",'M101.5,128 h9 v15 h-9 Z',"front"],
-  ["腹・体幹",'M89.5,146 h9 v15 h-9 Z',"front"],["腹・体幹",'M101.5,146 h9 v15 h-9 Z',"front"],
-  ["腹・体幹",'M89.5,164 h9 v15 h-9 Z',"front"],["腹・体幹",'M101.5,164 h9 v15 h-9 Z',"front"],
-  ["腹・体幹",'M89.5,182 C89.5,198 93,208 98.5,214 V182 Z',"front"],["腹・体幹",'M110.5,182 C110.5,198 107,208 101.5,214 V182 Z',"front"],
-  ["腹・体幹",'M87,128 C78,128 71,134 69,146 C67,162 68,180 71,194 C74,204 80,210 87,214 L87,186 C85,170 86,150 87,128 Z',"front"],
-  ["腹・体幹",'M113,128 C122,128 129,134 131,146 C133,162 132,180 129,194 C126,204 120,210 113,214 L113,186 C115,170 114,150 113,128 Z',"front"],
-  ["背中",'M100,58 C97,66 88,74 68,80 C79,86 88,94 93,108 C95,118 98,128 100,136 C102,128 105,118 107,108 C112,94 121,86 132,80 C112,74 103,66 100,58 Z',"back"],
-  ["背中",'M66,100 C62,114 64,132 68,150 C71,166 77,180 87,192 C90,184 90,174 89,164 C86,148 84,130 82,118 C78,108 72,103 66,100 Z',"back"],
-  ["背中",'M134,100 C138,114 136,132 132,150 C129,166 123,180 113,192 C110,184 110,174 111,164 C114,148 116,130 118,118 C122,108 128,103 134,100 Z',"back"],
-  ["背中",'M91,150 C89,168 89,190 91,212 L98.5,212 L98.5,140 C96,142 93,145 91,150 Z',"back"],["背中",'M109,150 C111,168 111,190 109,212 L101.5,212 L101.5,140 C104,142 107,145 109,150 Z',"back"],
-  ["臀",'M98.5,216 C86,213 72,217 67,229 C63,241 65,256 73,264 C81,270 92,268 98.5,262 Z',"back"],
-  ["臀",'M101.5,216 C114,213 128,217 133,229 C137,241 135,256 127,264 C119,270 108,268 101.5,262 Z',"back"]
+  ["胸",'M98,90 C88,85 76,86 68,92 C64,98 64,106 66,112 C71,120 81,124 91,124 C96,123 98,119 98,113 Z',"front",15],
+  ["胸",'M102,90 C112,85 124,86 132,92 C136,98 136,106 134,112 C129,120 119,124 109,124 C104,123 102,119 102,113 Z',"front",165],
+  ["背中",'M93,62 C86,68 77,74 68,79 C78,83 88,83 97,78 L97,64 Z',"front",25],["背中",'M107,62 C114,68 123,74 132,79 C122,83 112,83 103,78 L103,64 Z',"front",155],
+  ["腹・体幹",'M89.5,128 h9 v15 h-9 Z',"front",null],["腹・体幹",'M101.5,128 h9 v15 h-9 Z',"front",null],
+  ["腹・体幹",'M89.5,146 h9 v15 h-9 Z',"front",null],["腹・体幹",'M101.5,146 h9 v15 h-9 Z',"front",null],
+  ["腹・体幹",'M89.5,164 h9 v15 h-9 Z',"front",null],["腹・体幹",'M101.5,164 h9 v15 h-9 Z',"front",null],
+  ["腹・体幹",'M89.5,182 C89.5,198 93,208 98.5,214 V182 Z',"front",null],["腹・体幹",'M110.5,182 C110.5,198 107,208 101.5,214 V182 Z',"front",null],
+  ["腹・体幹",'M87,128 C78,128 71,134 69,146 C67,162 68,180 71,194 C74,204 80,210 87,214 L87,186 C85,170 86,150 87,128 Z',"front",62],
+  ["腹・体幹",'M113,128 C122,128 129,134 131,146 C133,162 132,180 129,194 C126,204 120,210 113,214 L113,186 C115,170 114,150 113,128 Z',"front",118],
+  ["背中",'M100,58 C97,66 88,74 68,80 C79,86 88,94 93,108 C95,118 98,128 100,136 C102,128 105,118 107,108 C112,94 121,86 132,80 C112,74 103,66 100,58 Z',"back",90],
+  ["背中",'M66,100 C62,114 64,132 68,150 C71,166 77,180 87,192 C90,184 90,174 89,164 C86,148 84,130 82,118 C78,108 72,103 66,100 Z',"back",60],
+  ["背中",'M134,100 C138,114 136,132 132,150 C129,166 123,180 113,192 C110,184 110,174 111,164 C114,148 116,130 118,118 C122,108 128,103 134,100 Z',"back",120],
+  ["背中",'M91,150 C89,168 89,190 91,212 L98.5,212 L98.5,140 C96,142 93,145 91,150 Z',"back",90],["背中",'M109,150 C111,168 111,190 109,212 L101.5,212 L101.5,140 C104,142 107,145 109,150 Z',"back",90],
+  ["臀",'M98.5,216 C86,213 72,217 67,229 C63,241 65,256 73,264 C81,270 92,268 98.5,262 Z',"back",35],
+  ["臀",'M101.5,216 C114,213 128,217 133,229 C137,241 135,256 127,264 C119,270 108,268 101.5,262 Z',"back",145]
  ],
- uarm:[["肩",'M-13,-10 C-17,4 -15,18 -10,28 C-4,22 3,13 10,2 C12,-7 4,-14 -5,-14 Z',"both"],
-       ["腕",'M-8,24 C-12,34 -11,48 -6,59 C-1,62 5,58 6,49 C8,39 7,29 4,23 C0,19 -6,19 -8,24 Z',"both"]],
- farm:[["腕",'M-8.5,4 C-11.5,18 -9,34 -5,48 C-1,50 4,46 5,38 C7,24 6,12 4,4 C1,0 -5,0 -7,4 Z',"both"]],
- thigh:[["脚",'M-15,6 C-18,30 -16,58 -11,84 C-8,90 -3,88 -3,80 C-3,58 -4,34 -6,12 C-8,4 -13,2 -15,6 Z',"front"],
-        ["脚",'M-4,4 C-6,28 -4,56 0,76 C3,82 8,79 8,70 C10,50 8,28 5,8 C3,0 -3,0 -4,4 Z',"front"],
-        ["脚",'M6,52 C2,62 2,76 5,86 C9,90 12,84 12,72 C12,62 10,54 6,52 Z',"front"],
-        ["脚",'M-13,40 C-16,56 -15,72 -11,88 C-7,92 -3,88 -2,80 C-1,64 -3,50 -5,40 C-7,34 -11,34 -13,40 Z',"back"],
-        ["脚",'M0,38 C-1,54 1,70 5,86 C9,90 12,84 12,74 C13,58 11,46 7,36 C5,32 1,32 0,38 Z',"back"]],
- shin:[["脚",'M-9,8 C-12,24 -11,42 -7,58 C-4,62 -1,56 -1,48 C-1,34 -3,20 -5,8 C-6,4 -8,4 -9,8 Z',"front"],
-       ["脚",'M3,10 C7,24 7,40 4,56 C1,56 -1,48 -1,40 C-1,28 0,18 3,10 Z',"front"],
-       ["脚",'M-9,6 C-14,18 -14,34 -10,48 C-7,54 -2,50 -1,42 C0,30 -2,16 -5,6 C-6,2 -8,2 -9,6 Z',"back"],
-       ["脚",'M1,6 C1,20 2,34 5,44 C9,48 11,40 10,30 C10,20 8,10 4,4 C3,2 1,3 1,6 Z',"back"]]
+ uarm:[["肩",'M-13,-10 C-17,4 -15,18 -10,28 C-4,22 3,13 10,2 C12,-7 4,-14 -5,-14 Z',"both",80],
+       ["腕",'M-8,24 C-12,34 -11,48 -6,59 C-1,62 5,58 6,49 C8,39 7,29 4,23 C0,19 -6,19 -8,24 Z',"both",90]],
+ farm:[["腕",'M-8.5,4 C-11.5,18 -9,34 -5,48 C-1,50 4,46 5,38 C7,24 6,12 4,4 C1,0 -5,0 -7,4 Z',"both",85]],
+ thigh:[["脚",'M-15,6 C-18,30 -16,58 -11,84 C-8,90 -3,88 -3,80 C-3,58 -4,34 -6,12 C-8,4 -13,2 -15,6 Z',"front",86],
+        ["脚",'M-5,4 C-7,28 -5,56 -2,76 C0,82 4,79 4,70 C5,50 4,28 3,8 C2,0 -4,0 -5,4 Z',"front",92],
+        ["脚",'M6.5,50 C4,62 4,76 6,86 C8.5,90 11,84 11,72 C11,62 9.5,54 6.5,50 Z',"front",70],
+        ["脚",'M-13,40 C-16,56 -15,72 -11,88 C-7,92 -3,88 -2,80 C-1,64 -3,50 -5,40 C-7,34 -11,34 -13,40 Z',"back",90],
+        ["脚",'M0,38 C-1,54 1,70 5,86 C9,90 12,84 12,74 C13,58 11,46 7,36 C5,32 1,32 0,38 Z',"back",90]],
+ shin:[["脚",'M-9,8 C-12,24 -11,42 -7,58 C-4,62 -1,56 -1,48 C-1,34 -3,20 -5,8 C-6,4 -8,4 -9,8 Z',"front",90],
+       ["脚",'M3,10 C7,24 7,40 4,56 C1,56 -1,48 -1,40 C-1,28 0,18 3,10 Z',"front",92],
+       ["脚",'M-9,6 C-14,18 -14,34 -10,48 C-7,54 -2,50 -1,42 C0,30 -2,16 -5,6 C-6,2 -8,2 -9,6 Z',"back",90],
+       ["脚",'M1,6 C1,20 2,34 5,44 C9,48 11,40 10,30 C10,20 8,10 4,4 C3,2 1,3 1,6 Z',"back",90]]
 };
-/* ポーズ（正面から見た向き）。重心は向かって左の脚 */
-var POSE={torso:-2.5,head:-4,
- armL:{at:[66,92],u:9,f:-5},armR:{at:[134,92],u:-7,f:12},
- legL:{at:[84,236],t:-1.5,s:1.5},legR:{at:[116,236],t:5,s:-11,sy:.965}};
+/* 立ち姿（左右対称） */
+var POSE={torso:0,head:0,
+ armL:{at:[66,92],u:8,f:-3},armR:{at:[134,92],u:-8,f:3},
+ legL:{at:[84,236],t:2,s:-1},legR:{at:[116,236],t:-2,s:1}};
 function rig(paint){
   // paint(part, side) → その部品の中身（ローカル座標）
   function arm(a,mir){var m=mir?' scale(-1,1)':'';return '<g transform="translate('+a.at+') rotate('+a.u+')'+m+'">'+paint("uarm")+
@@ -538,48 +539,44 @@ function rig(paint){
   return leg(P.legL,false)+leg(P.legR,true)+
     '<g transform="rotate('+P.torso+',100,240)">'+paint("torso")+'<g transform="rotate('+P.head+',100,58)">'+paint("head")+'</g>'+arm(P.armL,false)+arm(P.armR,true)+'</g>';
 }
-function figure(side,lv,uid){
-  var u=uid+side[0];
-  var fill=function(part){return '<path d="'+PART_SHAPES[part]+'"/>';};
+/* 部位名のラベル位置（図の座標）：[部位, 指す点x, y, 左右] */
+var LABELS={front:[["肩",54,96,"L"],["腕",47,140,"L"],["脚",80,300,"L"],["胸",118,104,"R"],["腹・体幹",121,170,"R"]],
+ back:[["肩",54,96,"L"],["腕",47,146,"L"],["脚",80,312,"L"],["背中",124,140,"R"],["臀",118,240,"R"]]};
+function fibersD(d,ang){
+  var n=d.match(/-?\d+(\.\d+)?,-?\d+(\.\d+)?/g)||[],x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  n.forEach(function(p){var a=p.split(",").map(Number);x0=Math.min(x0,a[0]);x1=Math.max(x1,a[0]);y0=Math.min(y0,a[1]);y1=Math.max(y1,a[1]);});
+  var cx=(x0+x1)/2,cy=(y0+y1)/2,r=Math.hypot(x1-x0,y1-y0)/2+2,t=ang*Math.PI/180,dx=Math.cos(t),dy=Math.sin(t),out="";
+  for(var k=-r;k<=r;k+=1.8){var px=cx-dy*k,py=cy+dx*k;out+="M"+(px-dx*r).toFixed(1)+","+(py-dy*r).toFixed(1)+"L"+(px+dx*r).toFixed(1)+","+(py+dy*r).toFixed(1);}
+  return out;
+}
+/* 筋肉の色：セット数が少ない＝淡い桃色、多い＝濃い赤 */
+function musColor(v){return "color-mix(in srgb, #b3202c "+Math.round(15+v*85)+"%, #f1d9d2)";}
+function figure(side,lv,uid,counts){
+  var u=uid+side[0],cid=0;
   var defs='<defs>'+
-    '<radialGradient id="mbl'+u+'" gradientUnits="userSpaceOnUse" cx="80" cy="90" r="330"><stop offset="0" stop-color="#f7f2e9"/><stop offset=".5" stop-color="#ddd5c8"/><stop offset="1" stop-color="#9d9486"/></radialGradient>'+
-    '<radialGradient id="rel'+u+'" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#3b352d" stop-opacity=".26"/></radialGradient>'+
-    '<linearGradient id="gld'+u+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d98b"/><stop offset=".5" stop-color="#c9a046"/><stop offset="1" stop-color="#8a6a24"/></linearGradient>'+
-    '<filter id="vein'+u+'" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.011 0.04" numOctaves="3" seed="11"/><feColorMatrix type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.39  0 0 0 0 0.35  -3.2 0 0 0 1.55"/></filter>'+
-    '<filter id="grv'+u+'"><feGaussianBlur stdDeviation=".9"/></filter>'+
-    '<filter id="ol'+u+'" x="-20%" y="-10%" width="140%" height="125%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="3" dy="4"/><feComponentTransfer result="sh"><feFuncA type="linear" slope=".45"/></feComponentTransfer>'+
-      '<feMorphology in="SourceAlpha" operator="dilate" radius=".8" result="d"/><feComposite in="d" in2="SourceAlpha" operator="out" result="e"/><feFlood flood-color="#6e665a" flood-opacity=".75"/><feComposite in2="e" operator="in" result="edge"/>'+
-      '<feMerge><feMergeNode in="sh"/><feMergeNode in="SourceGraphic"/><feMergeNode in="edge"/></feMerge></filter>'+
-    '<filter id="glw'+u+'" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feColorMatrix in="b" type="matrix" values="0 0 0 0 .95  0 0 0 0 .78  0 0 0 0 .35  0 0 0 .9 0" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
-    '<linearGradient id="pl'+u+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e4ddd1"/><stop offset="1" stop-color="#9c9385"/></linearGradient>'+
-    '<g id="sil'+u+'">'+rig(fill)+'</g><clipPath id="bd'+u+'"><use href="#sil'+u+'"/></clipPath>'+
+    '<filter id="glw'+u+'" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.8" result="b"/><feColorMatrix in="b" type="matrix" values="0 0 0 0 .85  0 0 0 0 .15  0 0 0 0 .2  0 0 0 .8 0" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
+    '<filter id="ol'+u+'" x="-10%" y="-5%" width="120%" height="110%"><feMorphology in="SourceAlpha" operator="dilate" radius=".9" result="d"/><feComposite in="d" in2="SourceAlpha" operator="out" result="e"/><feFlood flood-color="#8d877f"/><feComposite in2="e" operator="in" result="edge"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="edge"/></feMerge></filter>'+
+    '<g id="sil'+u+'">'+rig(function(part){return '<path d="'+PART_SHAPES[part]+'"/>';})+'</g>'+
     '</defs>';
   var flip=side==="back"?' transform="matrix(-1 0 0 1 200 0)"':'';
-  var plinth='<rect x="44" y="434" width="112" height="5" rx="1" fill="url(#pl'+u+')"/><rect x="50" y="439" width="100" height="16" fill="url(#pl'+u+')"/><rect x="46" y="455" width="108" height="5" rx="1" fill="url(#pl'+u+')"/>'+
-    '<text x="100" y="450.5" text-anchor="middle" font-family="Cinzel,\'Trajan Pro\',Georgia,serif" font-size="7.2" letter-spacing="2.4" fill="#6f665a">'+(side==="front"?"ΠΡΟΣΩΠΟΝ":"ΝΩΤΟΝ")+'</text>';
-  var stone='<g'+flip+'><g filter="url(#ol'+u+')" fill="url(#mbl'+u+')"><use href="#sil'+u+'"/></g>'+
-    '<rect x="0" y="0" width="200" height="440" filter="url(#vein'+u+')" clip-path="url(#bd'+u+')" opacity=".5"/></g>';
-  // 筋肉
-  var hot={};
+  var skin='<g'+flip+'><g filter="url(#ol'+u+')" fill="var(--sil)"><use href="#sil'+u+'"/></g></g>';
+  var clips="";
   var mus=rig(function(part){
     if(part==="head") return "";
     return (MUS[part]||[]).filter(function(m){return m[2]==="both"||m[2]===side;}).map(function(m){
-      var v=Math.max(0,Math.min(1,lv[m[0]]||0)),d=m[1];
-      return '<g'+(v>=.8?' filter="url(#glw'+u+')"':'')+'><path d="'+d+'" fill="none" stroke="#3f392f" stroke-opacity=".42" stroke-width="1.3" filter="url(#grv'+u+')"/>'+
-        (v>.04?'<path d="'+d+'" fill="url(#gld'+u+')" fill-opacity="'+(v*0.88).toFixed(2)+'" style="mix-blend-mode:multiply"/>':'')+
-        '<path d="'+d+'" fill="url(#rel'+u+')"/></g>';
+      var v=Math.max(0,Math.min(1,lv[m[0]]||0)),d=m[1],col=musColor(v),id="m"+u+(cid++),fib="";
+      if(m[3]!=null){clips+='<clipPath id="'+id+'"><path d="'+d+'"/></clipPath>';fib='<path d="'+fibersD(d,m[3])+'" clip-path="url(#'+id+')" stroke="#5e1016" stroke-opacity=".28" stroke-width=".45" fill="none"/>';}
+      return '<g'+(v>=.8?' filter="url(#glw'+u+')"':'')+'><path d="'+d+'" style="fill:'+col+'"/>'+fib+'<path d="'+d+'" fill="none" stroke="#6d1a20" stroke-opacity=".55" stroke-width=".6"/></g>';
     }).join("");
   });
-  // 頭部の細部
-  var headDet=rig(function(part){
-    if(part!=="head") return "";
-    if(side==="front") return '<path d="M86,30 C84,15 92,9 100,9 C108,9 116,15 114,30 C112,22 106,19 100,19 C94,19 88,22 86,30 Z" fill="#cfc6b8"/>'+
-      '<g fill="none" stroke="#6b6357" stroke-opacity=".45" stroke-width=".7"><path d="M92,29 C94,27 97,27 98.5,28.5 M101.5,28.5 C103,27 106,27 108,29"/><path d="M100,29 L99,37 C100,38 101,38 102,37"/><path d="M96.5,43 C98.5,44 101.5,44 103.5,43"/></g>'+
-      [[88,26],[92,21],[97,18],[103,18],[108,21],[112,26],[90,15],[100,13],[110,15]].map(function(c){return '<path d="M'+(c[0]-2.4)+','+(c[1]+.6)+' a2.5,2.5 0 1 1 3.6,2" fill="none" stroke="#6f6659" stroke-opacity=".6" stroke-width=".7"/>';}).join("");
-    return '<path d="M86,32 C84,15 92,9 100,9 C108,9 116,15 114,32 C114,40 112,46 110,49 C104,46 96,46 90,49 C88,46 86,40 86,32 Z" fill="#cfc6b8"/>'+
-      [[88,24],[92,18],[100,14],[108,18],[112,24],[90,32],[96,27],[104,27],[110,32],[93,40],[100,36],[107,40],[100,45]].map(function(c){return '<path d="M'+(c[0]-2.4)+','+(c[1]+.6)+' a2.5,2.5 0 1 1 3.6,2" fill="none" stroke="#6f6659" stroke-opacity=".6" stroke-width=".7"/>';}).join("");
-  });
-  return '<svg viewBox="0 0 200 462" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+(side==="front"?"前面":"背面")+'の部位別セット数（金色が濃いほどセット数が多い）">'+defs+plinth+stone+'<g'+flip+'>'+mus+headDet+'</g></svg>';
+  // 部位名と、その月のセット数
+  var lab=(LABELS[side]||[]).map(function(L){
+    var x=L[1],y=L[2],left=L[3]==="L",tx=left?-46:246,n=counts&&counts[L[0]]!=null?counts[L[0]]:"";
+    return '<path d="M'+x+','+y+' L'+(left?-8:208)+','+y+'" stroke="var(--mute)" stroke-width=".5" stroke-opacity=".8"/><circle cx="'+x+'" cy="'+y+'" r="1.6" fill="var(--ink)"/>'+
+      '<text x="'+tx+'" y="'+(y-3)+'" text-anchor="'+(left?"start":"end")+'" font-size="12" font-weight="500" fill="var(--ink)">'+L[0]+'</text>'+
+      '<text x="'+tx+'" y="'+(y+11)+'" text-anchor="'+(left?"start":"end")+'" font-size="11" fill="var(--mute)" font-family="Jost,sans-serif">'+n+(n!==""?" セット":"")+'</text>';
+  }).join("");
+  return '<svg viewBox="-50 0 300 444" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+(side==="front"?"前面":"背面")+'の筋肉図。色が濃いほどその月のセット数が多い">'+defs+'<defs>'+clips+'</defs>'+skin+'<g'+flip+'>'+mus+'</g>'+lab+'</svg>';
 }
 
 /* ---------- 部位 ---------- */
@@ -589,14 +586,15 @@ function renderParts(){
   var lv={};PARTS.forEach(function(p){lv[p]=st.parts[p]/max;});
   var h=monthHeader(statYm);
   h+='<div class="big3"><div><b>'+st.lift+'</b><span>日</span></div><div><b>'+st.sets+'</b><span>セット</span></div><div><b>'+Object.keys(st.ex).length+'</b><span>種目</span></div></div>';
-  h+='<div class="bodywrap"><figure>'+figure("front",lv,"f")+'<figcaption>FRONT</figcaption></figure><figure>'+figure("back",lv,"b")+'<figcaption>BACK</figcaption></figure></div>';
+  h+='<div class="seg" role="group" aria-label="表示する面"><button data-act="side" data-v="front" aria-pressed="'+(bodySide==="front")+'">前面</button><button data-act="side" data-v="back" aria-pressed="'+(bodySide==="back")+'">背面</button></div>';
+  h+='<figure class="bodyfig">'+figure(bodySide,lv,"x",st.parts)+'</figure>';
   h+='<p class="ptitle">部位別セット数</p>';
   PARTS.forEach(function(p){
     var v=st.parts[p],b=pv.parts[p],df=v-b;
-    h+='<div class="prow"><div class="t"><span class="sw" style="background:color-mix(in srgb, #c9a046 '+Math.round(lv[p]*100)+'%, var(--lo))"></span><span class="n">'+p+'</span><span class="v">'+v+'</span><span class="df">'+(df>0?"+"+df:df<0?"−"+(-df):"±0")+'</span></div>'+
+    h+='<div class="prow"><div class="t"><span class="sw" style="background:'+musColor(lv[p])+'"></span><span class="n">'+p+'</span><span class="v">'+v+'</span><span class="df">'+(df>0?"+"+df:df<0?"−"+(-df):"±0")+'</span></div>'+
        '<div class="track"><div class="f" style="width:'+(v/max*100)+'%"></div><div class="p" style="left:'+(b/max*100)+'%"></div></div></div>';
   });
-  h+='<p class="note">金色が濃い部位ほど、その月のセット数が多いことを示します。細い縦線は前月のセット数。部位の割り当ては「設定」で変えられます。</p>';
+  h+='<p class="note">筋肉の赤が濃い部位ほど、その月のセット数が多いことを示します。細い縦線は前月のセット数。部位の割り当ては「設定」で変えられます。</p>';
   app.innerHTML=h;
 }
 
@@ -769,6 +767,7 @@ function handleAct(b){
   if(a==="day"){curDate=addDays(curDate,+b.dataset.n);go();return;}
   if(a==="today"){curDate=today;go();return;}
   if(a==="month"){statYm=addMonths(statYm,+b.dataset.n);go();return;}
+  if(a==="side"){bodySide=b.dataset.v;rerender();return;}
   if(a==="goDay"){curDate=b.dataset.d;view="rec";window.scrollTo(0,0);go();return;}
   if(a==="openAdd"){openAdd();return;}
   if(a==="closeSheet"){closeSheet();return;}
