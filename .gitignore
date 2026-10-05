@@ -2,3 +2,5 @@
 *.json
 !package.json
 backup/
+# 個人の記録データは入れない（README の決まり）
+記録/

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: 297mm 210mm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Noto Sans CJK JP", sans-serif;
+    background: #ffffff;
+    color: #111111;
+    font-size: 8.4pt;
+    line-height: 1.5;
+  }
+  .sheet {
+    width: 297mm; height: 210mm;
+    display: flex; position: relative; overflow: hidden;
+    background: #ffffff;
+  }
+  .sheet + .sheet { page-break-before: always; }
+  .fold { position: absolute; left: 148.5mm; top: 10mm; bottom: 10mm; border-left: 0.5pt dashed #c9c9c9; }
+  .panel { width: 148.5mm; height: 210mm; padding: 11mm 9mm 9mm 9mm; position: relative; }
+  .panel.left  { padding-right: 11mm; }
+  .panel.right { padding-left: 11mm; }
+  .pg { position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 7pt; color: #aaaaaa; }
+
+  /* 見出しピル */
+  .pill {
+    display: inline-block;
+    background: #f0e42b;
+    color: #0a0a0a;
+    font-size: 10.5pt;
+    font-weight: 700;
+    padding: 1.6mm 5mm;
+    border-radius: 3mm;
+    margin: 0 0 2.5mm 0;
+  }
+  .pill.wide { display: block; }
+  .pill .tag { font-size: 8pt; font-weight: 500; margin-left: 3mm; color: #3a3505; }
+  .pill.sp { margin-top: 5mm; }
+
+  /* 白カード */
+  .card {
+    background: #fbfbf7;
+    color: #111111;
+    border: 0.5pt solid #d6d6ce;
+    border-radius: 3mm;
+    padding: 4mm 4.5mm;
+  }
+  .card ul { margin: 0 0 0 4mm; padding: 0; }
+  .card li { margin-bottom: 1.6mm; }
+  .card li:last-child { margin-bottom: 0; }
+  .card b { color: #6b6100; }
+
+  /* 表紙 */
+  .cover { display: flex; flex-direction: column; justify-content: center; height: 100%; text-align: center; }
+  .cover h1 { font-size: 20pt; font-weight: 500; margin: 0 0 4mm 0; letter-spacing: 0.02em; }
+  .cover h2 { font-size: 15pt; font-weight: 500; margin: 0 0 7mm 0; }
+  .cover .lead { font-size: 11pt; font-weight: 700; margin: 0 0 9mm 0; }
+  .cover .lead span { background: #f0e42b; color: #0a0a0a; padding: 1.2mm 4mm; border-radius: 2mm; }
+  .cover .meta { font-size: 8.5pt; color: #555555; }
+  .cover .note { font-size: 7.5pt; color: #8a8a8a; margin-top: 14mm; }
+
+  /* 表 */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 0.4pt solid #c4c4bd; padding: 1.6mm 1.4mm; }
+  th { background: #ebebe4; font-size: 7.8pt; font-weight: 700; text-align: center; }
+  .log td.name { width: 27%; font-size: 8.6pt; }
+  .log td.set  { width: 21%; font-size: 8.2pt; color: #3d3d3d; }
+  .log td.wk   { width: 13%; height: 25mm; }
+
+  .cycle th, .cycle td { text-align: center; padding: 2mm 0.6mm; }
+  .cycle td.day { font-weight: 700; background: #f4f4ee; width: 14.2%; }
+  .rest { color: #9a9a9a; }
+  .dates td, .dates th { text-align: center; padding: 1.9mm 0.5mm; font-size: 8pt; }
+  .dates td.wkno { font-weight: 700; background: #f4f4ee; width: 12%; }
+
+  .ex th, .ex td { font-size: 7.4pt; padding: 1.5mm 1mm; text-align: center; }
+  .ex td.name { width: 24%; text-align: left; }
+  .ex td.set  { width: 21%; text-align: left; color: #3d3d3d; }
+  .ex td.up   { background: #f7ef8e; font-weight: 700; }
+
+  .wkrule td { padding: 2.2mm 2mm; }
+  .wkrule td.no { width: 16%; font-weight: 700; background: #f0e42b; text-align: center; }
+
+  .memo { margin-top: 4mm; }
+  .memo .lbl { font-size: 7.5pt; color: #8a8a8a; margin-bottom: 1mm; }
+  .memo .line { border-bottom: 0.4pt solid #cfcfc8; height: 7mm; }
+  .card .memo .line { border-bottom: 0.4pt solid #cfcfc8; }
+  .foot { position: absolute; left: 9mm; right: 9mm; bottom: 11mm; font-size: 7pt; color: #7a7a7a; line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<!-- ======== 1枚目 表：左=P8 / 右=P1 ======== -->
+<div class="sheet">
+  <div class="fold"></div>
+
+  <!-- P8 日付・休養・メモ -->
+  <div class="panel left">
+    <span class="pill wide">4週間の日付</span>
+    <div class="card">
+      <table class="dates">
+        <tr><th></th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th><th>日</th></tr>
+        <tr><td class="wkno">1週</td><td>9/21</td><td>9/22</td><td>9/23</td><td class="rest">9/24</td><td>9/25</td><td>9/26</td><td class="rest">9/27</td></tr>
+        <tr><td class="wkno">2週</td><td>9/28</td><td>9/29</td><td>9/30</td><td class="rest">10/1</td><td>10/2</td><td>10/3</td><td class="rest">10/4</td></tr>
+        <tr><td class="wkno">3週</td><td>10/5</td><td>10/6</td><td>10/7</td><td class="rest">10/8</td><td>10/9</td><td>10/10</td><td class="rest">10/11</td></tr>
+        <tr><td class="wkno">4週</td><td>10/12</td><td>10/13</td><td>10/14</td><td class="rest">10/15</td><td>10/16</td><td>10/17</td><td class="rest">10/18</td></tr>
+      </table>
+    </div>
+
+    <span class="pill wide sp">見直しのサイン</span>
+    <div class="card">
+      <ul>
+        <li>次のいずれかが出たら、1日休みを増やすか、軽めの日をさらに軽くする。<br>
+          ① 重量・回数が2週続けて落ちる（最もわかりやすい指標）　② 朝の疲れが抜けない<br>
+          ③ 肩・肘・膝に張りや痛みが出る　④ ジムに行く気が起きない日が続く</li>
+        <li>この4週の後は、1週だけ全種目そのままでセット数を3→2に減らす。</li>
+      </ul>
+    </div>
+
+    <span class="pill wide sp">記入例</span>
+    <div class="card">
+      <table class="ex">
+        <tr><th>種目</th><th>目標設定</th><th>1週</th><th>2週</th><th>3週</th><th>4週</th></tr>
+        <tr><td class="name">チェストプレス</td><td class="set">25kg × 10-12回</td><td>25×12</td><td>25×12</td><td class="up">32×9</td><td>32×10</td></tr>
+        <tr><td class="name">ショルダープレス</td><td class="set">15kg × 10回</td><td>15×10</td><td>15×10,10,8</td><td>15×12</td><td>15×12 ギリ</td></tr>
+        <tr><td class="name">アシストディップス</td><td class="set">40kg × 8回</td><td>40×8</td><td>40×9</td><td class="up">32×7</td><td>32×8</td></tr>
+      </table>
+      <ul style="margin-top:2.5mm;">
+        <li><b>25×12</b>＝3セットとも25kg×12回。<b>15×10,10,8</b>＝セットごとに落ちたとき。<b>休</b>＝行けなかった日。</li>
+        <li>黄色のマスは重量を変えた回。アシスト系の 40→32 は補助が軽くなった＝前進。</li>
+        <li>総重量は書かない。「ギリ」「余裕」など体感を一言添えると次の判断が変わる。</li>
+      </ul>
+    </div>
+
+    <div class="foot">
+      直近の記録（2026年9月12日〜17日）をもとに作成。一般的な目安であり医学的な助言ではありません。痛みがある場合は医師またはトレーナーに相談してください。
+    </div>
+    <div class="pg">8</div>
+  </div>
+
+  <!-- P1 表紙 -->
+  <div class="panel right">
+    <div class="cover">
+      <h1>FIT PLACE24 西川口</h1>
+      <h2>筋トレプログラム</h2>
+      <p class="lead"><span>押す・引く・脚を週内で回し、記録で重量を決める</span></p>
+      <p class="meta">4週間　2026年9月21日（月）〜 10月18日（日）<br>週5日 ｜ 休養日 木曜・日曜 ｜ 作成日 2026年9月18日</p>
+      <p class="note">実在確認済みのウェイトスタック／ケーブルマシンのみ</p>
+    </div>
+    <div class="pg">1</div>
+  </div>
+</div>
+
+<!-- ======== 1枚目 裏：左=P2 / 右=P7 ======== -->
+<div class="sheet">
+  <div class="fold"></div>
+
+  <!-- P2 ルール -->
+  <div class="panel left">
+    <span class="pill wide">運用ルール</span>
+    <div class="card">
+      <ul>
+        <li>押す（胸・肩・三頭）は月曜メイン＋金曜追加で週2回。</li>
+        <li>脚・腹は水曜メイン＋土曜追加で週2回。引く（背中・腕）は火曜。</li>
+        <li>プレートロードとフリーウェイトは基本プログラムから除外。</li>
+        <li>未確認マシン・実在しない重量は追加しない。</li>
+        <li>1日5種目・各3セット（ヒップスラストのみ4セット）。</li>
+      </ul>
+    </div>
+
+    <span class="pill wide sp">4週間の強度ルール</span>
+    <div class="card">
+      <table class="wkrule">
+        <tr><td class="no">1週目</td><td>あと2回できるところで終了</td></tr>
+        <tr><td class="no">2週目</td><td>あと1〜2回できるところで終了</td></tr>
+        <tr><td class="no">3週目</td><td>上限回数を達成した種目だけ重量を1段階上げ、あと2回できるところで終了</td></tr>
+        <tr><td class="no">4週目</td><td>あと1回できるところで終了</td></tr>
+      </table>
+    </div>
+
+    <span class="pill wide sp">重量アップ・休憩</span>
+    <div class="card">
+      <ul>
+        <li>全セットで上限回数を達成したら、次回は重量を1段階上げる。</li>
+        <li>確認済み重量：5 / 10 / 15 / 20 / 25 / 32 / 40 / 47 / 55 / 62 / 70 / 78 / 85 / 92 / 100kg</li>
+        <li>アシスト系は逆。<b>数字が下がったら前進</b>。総量の数字は気にしない。</li>
+        <li><b>軽めの日（金・土）は重量を上げない。</b>増量の判断は重めの日（月・水）の記録だけで行う。</li>
+        <li>主要種目の休憩は2〜3分。肩・腕・腹筋は60〜90秒。</li>
+      </ul>
+    </div>
+
+    <div class="pg">2</div>
+  </div>
+
+  <!-- P7 土曜 -->
+  <div class="panel right">
+    <span class="pill wide">土曜　脚・腹（軽め）<span class="tag">重量据え置き・回数を伸ばす</span></span>
+    <div class="card">
+      <table class="log">
+        <tr><th>種目</th><th>目標設定</th><th>1週</th><th>2週</th><th>3週</th><th>4週</th></tr>
+        <tr><td class="name">シーテッド<br>レッグカール</td><td class="set">20kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ヒップアブダク<br>ションマシン</td><td class="set">32kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ヒップスラスト<br>マシン</td><td class="set">25kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">シーテッド<br>ケーブルロウ</td><td class="set">32kg × 10回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">アブドミナル<br>クランチマシン</td><td class="set">32kg × 15回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+      </table>
+      <div class="memo"><div class="lbl">メモ</div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="pg">7</div>
+  </div>
+</div>
+
+<!-- ======== 2枚目 表：左=P6 / 右=P3 ======== -->
+<div class="sheet">
+  <div class="fold"></div>
+
+  <!-- P6 金曜 -->
+  <div class="panel left">
+    <span class="pill wide">金曜　押す（軽め）<span class="tag">重量据え置き・回数を伸ばす</span></span>
+    <div class="card">
+      <table class="log">
+        <tr><th>種目</th><th>目標設定</th><th>1週</th><th>2週</th><th>3週</th><th>4週</th></tr>
+        <tr><td class="name">チェストプレス<br>マシン</td><td class="set">20kg × 12-15回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">インクライン<br>チェストプレス</td><td class="set">15kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ショルダープレス<br>マシン</td><td class="set">15kg × 10-12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">アシスト<br>ディップス</td><td class="set">47kg × 10回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">アームカール<br>マシン</td><td class="set">10kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+      </table>
+      <div class="memo"><div class="lbl">メモ</div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="pg">6</div>
+  </div>
+
+  <!-- P3 月曜 -->
+  <div class="panel right">
+    <span class="pill wide">月曜　押す（重め）<span class="tag">胸・肩・三頭</span></span>
+    <div class="card">
+      <table class="log">
+        <tr><th>種目</th><th>目標設定</th><th>1週</th><th>2週</th><th>3週</th><th>4週</th></tr>
+        <tr><td class="name">チェストプレス<br>マシン</td><td class="set">25kg × 10-12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">インクライン<br>チェストプレス</td><td class="set">15kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ペックデッキ<br>フライ</td><td class="set">25kg × 10-12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ショルダープレス<br>マシン</td><td class="set">15kg × 10回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">アシスト<br>ディップス</td><td class="set">40kg × 8回<br>（下げれば前進）</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+      </table>
+      <div class="memo"><div class="lbl">メモ</div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="pg">3</div>
+  </div>
+</div>
+
+<!-- ======== 2枚目 裏：左=P4 / 右=P5 ======== -->
+<div class="sheet">
+  <div class="fold"></div>
+
+  <!-- P4 火曜 -->
+  <div class="panel left">
+    <span class="pill wide">火曜　引く＋腕<span class="tag">背中・リアデルト・二頭</span></span>
+    <div class="card">
+      <table class="log">
+        <tr><th>種目</th><th>目標設定</th><th>1週</th><th>2週</th><th>3週</th><th>4週</th></tr>
+        <tr><td class="name">ラットプルダウン</td><td class="set">32kg × 8-10回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">シーテッド<br>ケーブルロウ</td><td class="set">32kg × 10-12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ディップチン<br>アシスト</td><td class="set">40kg × 6-8回<br>（下げれば前進）</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">リアデルトフライ<br>マシン</td><td class="set">20kg × 10回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">アームカール<br>マシン</td><td class="set">10kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+      </table>
+      <div class="memo"><div class="lbl">メモ</div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="pg">4</div>
+  </div>
+
+  <!-- P5 水曜 -->
+  <div class="panel right">
+    <span class="pill wide">水曜　脚・腹（重め）<span class="tag">大腿四頭・ハム・臀部・腹</span></span>
+    <div class="card">
+      <table class="log">
+        <tr><th>種目</th><th>目標設定</th><th>1週</th><th>2週</th><th>3週</th><th>4週</th></tr>
+        <tr><td class="name">レッグプレス</td><td class="set">50kg × 10-12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">シーテッド<br>レッグカール</td><td class="set">20kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">ヒップスラスト<br>マシン</td><td class="set">32kg × 10回<br>（4セット）</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">レッグ<br>エクステンション</td><td class="set">25kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+        <tr><td class="name">アブドミナル<br>クランチマシン</td><td class="set">47kg × 12回</td><td class="wk"></td><td class="wk"></td><td class="wk"></td><td class="wk"></td></tr>
+      </table>
+      <div class="memo"><div class="lbl">メモ</div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="pg">5</div>
+  </div>
+</div>
+
+</body>
+</html>
