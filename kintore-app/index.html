@@ -186,6 +186,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .tabs button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
 .status{font-size:12px;color:var(--faint);margin-top:28px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+#syOwner,#syRepo,#syToken{width:100%;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -294,7 +295,8 @@ var store={mode:"local",db:null,uid:null,
   }
 };
 var timers={},busy={};
-function markDirty(n){
+function markDirty(n,noStamp){
+  if(n==="settings"&&docs.settings&&!noStamp) docs.settings.u=Date.now();
   if(store.mode!=="idb") store.localSet(n,docs[n]);
   clearTimeout(timers[n]);
   timers[n]=setTimeout(function(){flush(n);},700);
@@ -302,17 +304,152 @@ function markDirty(n){
 function flush(n){
   if(busy[n]){busy[n]="again";return;}
   busy[n]=true;
-  store.set(n,docs[n]).then(function(){setStatus(null);},function(e){
+  store.set(n,docs[n]).then(function(){setStatus(null);if(sync.on()) sync.schedule(n);},function(e){
     setStatus(e&&e.code==="quota_exceeded"?"保存できる容量の上限に達しました。古い月をバックアップしてから削除してください。":"保存できませんでした。通信状態を確認すると、次の入力で自動的に保存し直します。");
   }).then(function(){
     var again=busy[n]==="again";busy[n]=false;if(again) flush(n);
   });
+}
+
+/* ---------- 端末間の同期（GitHubの非公開リポジトリ） ----------
+   記録を data/<名前>.json として保存する。日ごとの更新時刻（u）で新しい方を採用するので、
+   別の端末で別の日を記録しても上書きされない。通信できないときは端末内に保存して後で送る。 */
+var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:null,
+  load:function(){
+    try{this.cfg=JSON.parse(localStorage.getItem("kintore:sync")||"null");}catch(e){this.cfg=null;}
+    try{this.pending=JSON.parse(localStorage.getItem("kintore:pending")||"{}");}catch(e){this.pending={};}
+  },
+  on:function(){return !!(this.cfg&&this.cfg.token&&store.mode!=="db");},
+  savePending:function(){try{localStorage.setItem("kintore:pending",JSON.stringify(this.pending));}catch(e){}},
+  text:function(){
+    if(this.err) return "同期できませんでした："+this.err+"（記録はこの端末に保存済み。つながったら自動で送ります）";
+    var n=Object.keys(this.pending).length;
+    if(n) return "記録はこの端末に保存済み。GitHubへの送信待ちがあります（つながったら自動で送ります）。";
+    return "記録はこの端末とGitHub（"+this.cfg.repo+"・非公開）に保存され、同期を設定した端末どうしで共有されます。"+(this.lastAt?"最終同期 "+this.lastAt:"");
+  },
+  api:function(path,opt){
+    opt=opt||{};
+    var h={"Accept":"application/vnd.github+json","Authorization":"Bearer "+this.cfg.token,"X-GitHub-Api-Version":"2022-11-28"};
+    if(opt.body) h["Content-Type"]="application/json";
+    return fetch("https://api.github.com/repos/"+encodeURIComponent(this.cfg.owner)+"/"+encodeURIComponent(this.cfg.repo)+path,
+      {method:opt.method||"GET",headers:h,body:opt.body?JSON.stringify(opt.body):undefined,cache:"no-store"});
+  },
+  file:function(n){return "/contents/data/"+encodeURIComponent(n)+".json";},
+  b64e:function(str){var b=new TextEncoder().encode(str),s="";for(var i=0;i<b.length;i+=8192) s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));return btoa(s);},
+  b64d:function(b64){var bin=atob(String(b64).replace(/\s/g,"")),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);return new TextDecoder().decode(u);},
+  canon:function(o){
+    var f=function(v){if(Array.isArray(v)) return v.map(f);if(v&&typeof v==="object"){var r={};Object.keys(v).sort().forEach(function(k){if(v[k]!==undefined) r[k]=f(v[k]);});return r;}return v;};
+    return JSON.stringify(f(o),null,1);
+  },
+  /* 取得：{data,sha} / ファイルなし：null */
+  pull:function(n){
+    var self=this;
+    return this.api(this.file(n)).then(function(r){
+      if(r.status===404) return null;
+      if(!r.ok) throw self.httpErr(r.status);
+      return r.json().then(function(j){self.sha[n]=j.sha;return {data:JSON.parse(self.b64d(j.content)),sha:j.sha};});
+    });
+  },
+  push:function(n,data,sha){
+    var self=this,body={message:"記録 "+n+" を更新",content:this.b64e(this.canon(data))};
+    if(sha) body.sha=sha;
+    return this.api(this.file(n),{method:"PUT",body:body}).then(function(r){
+      if(r.status===409||r.status===422) return "conflict";
+      if(!r.ok) throw self.httpErr(r.status);
+      return r.json().then(function(j){self.sha[n]=j.content.sha;return "ok";});
+    });
+  },
+  httpErr:function(st){
+    var m=st===401?"トークンが無効か期限切れです":st===403?"トークンにこのリポジトリへの書き込み権限がありません":st===404?"リポジトリが見つかりません":"GitHubの応答エラー（"+st+"）";
+    var e=new Error(m);e.http=st;return e;
+  },
+  /* 日ごと（月の記録）・全体（設定）で新しい方を採用し、docs[n]をその場で更新。端末側が変わったらtrue */
+  merge:function(n,remote){
+    var local=docs[n],changed=false;
+    if(!remote) return false;
+    if(n==="settings"){
+      if(!local||(remote.u||0)>=(local.u||0)&&this.canon(remote)!==this.canon(local)){docs[n]=remote;return true;}
+      return false;
+    }
+    if(!local){docs[n]=remote;return true;}
+    if(!local.days) local.days={};
+    var rd=remote.days||{},self=this;
+    Object.keys(rd).forEach(function(k){
+      var l=local.days[k],r=rd[k];
+      if(!l){local.days[k]=r;changed=true;return;}
+      var lu=l.u||0,ru=r.u||0,take;
+      var lw=self.weight(l),rw=self.weight(r);
+      if(!lw&&rw) take=true;          // 中身のない日（メニューを入れただけ）で記録を消さない
+      else if(lw&&!rw) take=false;
+      else if(lu||ru) take=ru>lu;
+      else take=rw>lw;
+      if(take&&self.canon(l)!==self.canon(r)){local.days[k]=r;changed=true;}
+    });
+    return changed;
+  },
+  weight:function(d){var n=0;(d&&d.entries||[]).forEach(function(e){n+=doneSets(e).length;});return n+(d&&d.note?1:0)+(d&&d.rest?1:0);},
+  isEmpty:function(n){var d=docs[n];if(!d) return true;if(n==="settings") return false;return !d.days||!Object.keys(d.days).some(function(k){return sync.weight(d.days[k])>0;});},
+  run:function(n,tries){
+    var self=this;tries=tries||0;
+    return this.pull(n).then(function(rem){
+      var changed=self.merge(n,rem?rem.data:null);
+      if(changed){loaded[n]=true;idbSave(n);self.repaint();}
+      var same=rem&&self.canon(rem.data)===self.canon(docs[n]);
+      if(same||(!rem&&self.isEmpty(n))) return "ok";
+      return self.push(n,docs[n],rem?rem.sha:null).then(function(res){
+        if(res==="conflict"&&tries<2) return self.run(n,tries+1);
+        if(res==="conflict") throw new Error("ほかの端末と同時に保存が重なりました");
+        return res;
+      });
+    }).then(function(){
+      self.last[n]=Date.now();
+      if(self.pending[n]){delete self.pending[n];self.savePending();}
+      self.err=null;var d=new Date();self.lastAt=d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");
+      setStatus(null);
+    },function(e){
+      self.pending[n]=1;self.savePending();
+      self.err=e&&e.http?e.message:(navigator.onLine===false?null:(e&&e.message&&!/fetch|network|Load failed/i.test(e.message)?e.message:null));
+      setStatus(null);
+      throw e;
+    });
+  },
+  /* 同じ名前の同期は順番に1つずつ */
+  doc:function(n){
+    var self=this;
+    var p=(this.chain[n]||Promise.resolve()).then(function(){return self.run(n);});
+    this.chain[n]=p.catch(function(){});
+    return p;
+  },
+  maybe:function(n){if(!this.last[n]||Date.now()-this.last[n]>30000){this.last[n]=Date.now();this.doc(n).catch(function(){});}},
+  schedule:function(n){
+    var self=this;this.pending[n]=1;this.savePending();
+    clearTimeout(this.timer[n]);this.timer[n]=setTimeout(function(){delete self.timer[n];self.doc(n).catch(function(){});},6000);
+  },
+  /* 入力の途中で画面を描き直さない */
+  repaint:function(){
+    var a=document.activeElement;
+    if(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA"||a.tagName==="SELECT")&&app.contains(a)){this.dirtyView=true;return;}
+    if(settings()) rerender();
+  },
+  /* 送信待ちと読み込み済みのものをまとめて同期 */
+  all:function(){
+    if(!this.on()) return Promise.resolve();
+    var self=this,names=Object.keys(loaded).concat(Object.keys(this.pending)).filter(function(n,i,a){return a.indexOf(n)===i;});
+    Object.keys(this.timer).forEach(function(n){clearTimeout(self.timer[n]);delete self.timer[n];});
+    return Promise.all(names.map(function(n){return self.doc(n).catch(function(){});}));
+  }
+};
+sync.load();
+function idbSave(n){
+  if(store.mode==="idb") idb.set(n,JSON.parse(JSON.stringify(docs[n]))).catch(function(){});
+  else store.localSet(n,docs[n]);
 }
 var statusMsg=null;
 function setStatus(m){statusMsg=m;var el=document.getElementById("status");if(el) el.textContent=statusText();}
 function statusText(){
   if(statusMsg) return statusMsg;
   if(store.mode==="db") return "記録はClaudeのアカウントに保存されています（スマホでもPCでも同じ記録）。";
+  if(sync.on()) return sync.text();
   return "記録はこの端末に保存されています。機種変更や削除に備えて、設定からバックアップを書き出してください。";
 }
 
@@ -320,6 +457,7 @@ function ensure(n,def){
   if(loaded[n]) return Promise.resolve(docs[n]);
   return store.get(n).then(function(d){
     if(!loaded[n]){docs[n]=d||(def?def():null);loaded[n]=true;}
+    if(sync.on()) sync.maybe(n);
     return docs[n];
   });
 }
@@ -391,7 +529,7 @@ function getDay(dateStr,create){
   if(!m.days[dateStr]&&create) m.days[dateStr]={entries:[],run:false,rest:false,note:""};
   return m.days[dateStr]||null;
 }
-function saveDay(dateStr){markDirty("m-"+ymOf(dateStr));}
+function saveDay(dateStr){var d=getDay(dateStr,false);if(d) d.u=Date.now();markDirty("m-"+ymOf(dateStr));}
 
 function weightOptions(info,cur){
   var list=info.m?STAGES.concat(EXTRA[info.n]||[]).sort(function(a,b){return a-b;}):[0].concat(HOME_W);
@@ -628,6 +766,21 @@ var downloadsCap=null;
 function renderMore(){
   var h='<header class="mhead"><div class="mnum" style="font-size:44px">設定</div></header>';
   h+='<section class="sec"><h2>保存先</h2><p id="status">'+esc(statusText())+"</p></section>";
+  if(store.mode!=="db"){
+    var c=sync.cfg||{};
+    h+='<section class="sec"><h2>端末間の同期（GitHub）</h2>';
+    if(sync.on()){
+      h+='<p>'+esc(c.owner+"/"+c.repo)+' と同期しています。ほかの端末でも同じリポジトリとトークンを設定すると、同じ記録になります。</p>'+
+         '<div class="actions" style="margin:0"><button class="btn solid" data-act="syncNow">今すぐ同期</button><button class="btn" data-act="syncOff">この端末の同期をやめる</button></div>';
+    }else{
+      h+='<p>記録用の<b>非公開</b>リポジトリと、そのリポジトリだけに使えるトークンを入れると、どの端末でも同じ記録になります。トークンはこの端末の中だけに保存されます。</p>'+
+         '<label class="lbl" for="syOwner">GitHubのユーザー名</label><input id="syOwner" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.owner||"")+'" placeholder="例：Ginji001">'+
+         '<label class="lbl" for="syRepo">リポジトリ名</label><input id="syRepo" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.repo||"")+'" placeholder="例：kintore-data">'+
+         '<label class="lbl" for="syToken">トークン</label><input id="syToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">'+
+         '<div class="actions"><button class="btn solid" data-act="syncConnect">接続する</button></div>';
+    }
+    h+='<p id="syncmsg"></p></section>';
+  }
   h+='<section class="sec"><h2>種目と部位</h2><p>部位別の集計に使います。単位が「秒」の種目は秒数で記録します。</p><div class="scroll"><div class="exedit">';
   exList().forEach(function(e,i){
     h+="<span>"+esc(e.n)+'</span><select data-f="exp" data-i="'+i+'" aria-label="'+esc(e.n)+'の部位">'+PARTS.map(function(p){return "<option"+(p===e.p?" selected":"")+">"+p+"</option>";}).join("")+'</select>'+
@@ -753,8 +906,8 @@ function go(){
   else if(view!=="more") need.push(loadMonth(statYm));
   return Promise.all(need).then(function(){
     var st=settings();
-    if(st&&(!st.program||st.program.version!==DEFAULT_PROGRAM.version)){st.program=JSON.parse(JSON.stringify(DEFAULT_PROGRAM));markDirty("settings");}
-    if(view==="rec"&&curDate===today&&!getDay(today,false)&&program().days[String(parse(today).getDay())]){insertPlan();saveDay(today);}
+    if(st&&(!st.program||st.program.version!==DEFAULT_PROGRAM.version)){st.program=JSON.parse(JSON.stringify(DEFAULT_PROGRAM));markDirty("settings",true);}
+    if(view==="rec"&&curDate===today&&!getDay(today,false)&&program().days[String(parse(today).getDay())]){insertPlan();markDirty("m-"+ymOf(today));}
     rerender();
   });
 }
@@ -792,6 +945,12 @@ function handleAct(b){
     if(a==="rest"&&day.rest) day.run=day.run; 
     saveDay(curDate);renderRec();return;
   }
+  if(a==="syncConnect"){syncConnect();return;}
+  if(a==="syncNow"){var sm=document.getElementById("syncmsg");if(sm) sm.textContent="同期しています…";
+    Promise.all(allMonthKeys().map(loadMonth)).then(function(){return Promise.all(["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;})).map(function(n){return sync.doc(n).catch(function(e){return e;});}));})
+    .then(function(r){var bad=r.filter(function(x){return x instanceof Error;});var m=document.getElementById("syncmsg");if(m) m.textContent=bad.length?"一部同期できませんでした："+bad[0].message:"同期しました。";});return;}
+  if(a==="syncOff"){if(!confirm("この端末の同期設定（トークン）を消します。記録はこの端末に残ります。よろしいですか？")) return;
+    sync.cfg=null;try{localStorage.removeItem("kintore:sync");}catch(e){}sync.err=null;rerender();return;}
   if(["showJson","export","import"].indexOf(a)<0) day=getDay(curDate,true);
   if(a==="delEntry"){
     if(!confirm(day.entries[i].ex+"をこの日の記録から削除しますか？")) return;
@@ -814,7 +973,8 @@ function handleAct(b){
     if(!bk||!bk.months){msg.textContent="このアプリのバックアップではありません（months がありません）。";return;}
     if(!confirm("バックアップの内容で、含まれている月の記録を置き換えます。よろしいですか？")) return;
     if(bk.settings&&bk.settings.exercises){docs.settings=bk.settings;loaded.settings=true;markDirty("settings");}
-    Object.keys(bk.months).forEach(function(k){docs["m-"+k]=bk.months[k];loaded["m-"+k]=true;markDirty("m-"+k);});
+    var now=Date.now();
+    Object.keys(bk.months).forEach(function(k){var mo=bk.months[k];Object.keys(mo.days||{}).forEach(function(d){mo.days[d].u=now;});docs["m-"+k]=mo;loaded["m-"+k]=true;markDirty("m-"+k);});
     msg.textContent=Object.keys(bk.months).length+"か月分を読み込みました。";
     return;
   }
@@ -848,6 +1008,36 @@ app.addEventListener("change",function(ev){
     var e=exList()[+t.dataset.i];if(f==="exp") e.p=t.value; else e.u=t.value;markDirty("settings");
   }
 });
+
+function syncConnect(){
+  var o=document.getElementById("syOwner").value.trim(),r=document.getElementById("syRepo").value.trim(),t=document.getElementById("syToken").value.trim(),m=document.getElementById("syncmsg");
+  if(!o||!r||!t){m.textContent="ユーザー名・リポジトリ名・トークンをすべて入れてください。";return;}
+  var prev=sync.cfg;sync.cfg={owner:o,repo:r,token:t};m.textContent="確認しています…";
+  sync.api("").then(function(res){
+    if(!res.ok) throw sync.httpErr(res.status);
+    return res.json();
+  }).then(function(info){
+    if(!info.private) throw new Error("このリポジトリは公開されています。記録は非公開リポジトリにだけ保存します");
+    try{localStorage.setItem("kintore:sync",JSON.stringify(sync.cfg));}catch(e){}
+    m.textContent="接続しました。記録を同期しています…";
+    var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
+    return Promise.all(allMonthKeys().map(loadMonth)).then(function(){
+      return names.reduce(function(p,n){return p.then(function(){return sync.doc(n);});},Promise.resolve());
+    }).then(function(){rerender();var m2=document.getElementById("syncmsg");if(m2) m2.textContent="同期しました。";});
+  }).catch(function(e){
+    if(!localStorage.getItem("kintore:sync")) sync.cfg=prev;
+    var m2=document.getElementById("syncmsg");if(m2) m2.textContent="接続できませんでした："+(e&&e.message||e);
+  });
+}
+window.addEventListener("online",function(){sync.all();});
+document.addEventListener("visibilitychange",function(){
+  if(!sync.on()) return;
+  if(document.visibilityState==="hidden"){Object.keys(sync.timer).forEach(function(n){clearTimeout(sync.timer[n]);delete sync.timer[n];sync.doc(n).catch(function(){});});}
+  else{Object.keys(loaded).forEach(function(n){sync.last[n]=0;});sync.all();}
+});
+document.addEventListener("focusout",function(){setTimeout(function(){
+  if(sync.dirtyView){var a=document.activeElement;if(!(a&&app.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))){sync.dirtyView=false;rerender();}}
+},0);});
 
 /* ---------- 起動 ---------- */
 if(window.claude&&typeof window.claude.use==="function"){
