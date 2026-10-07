@@ -205,7 +205,9 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 /* ---------- 定数 ---------- */
 var PARTS=["胸","背中","肩","腕","臀","脚","腹・体幹"];
 var STAGES=[5,10,15,20,25,32,40,47,55,62,70,78,85,92,100];
-var EXTRA={"レッグプレス":[35,50],"アシストディップス":[45,50],"ディップチンアシスト":[45]};
+var EXTRA={"アシストディップス":[45,50],"ディップチンアシスト":[45]};
+/* 機種ごとに専用の段階（共通の段階は使わない） */
+var ONLY={"レッグプレス":[5,10,15,20,27,35,42,50,57,65,72,80,87,95,102,110,117,125,132,140]};
 var HOME_W=[1,2,3,4,5,6,8,10];
 var UNITS=["回","秒","左右回"];
 var ASSIST=["アシストディップス","ディップチンアシスト"];
@@ -231,7 +233,7 @@ var DEFAULT_PROGRAM={
  days:{
   "1":{label:"押す（重め）",items:[["チェストプレス",25,"8-10",3],["インクラインチェストプレス",15,"8-10",3],["ペックデッキフライ",25,"8-10",3],["ショルダープレス",15,"8-10",3],["アシストディップス",40,"6-8",3]]},
   "2":{label:"引く＋腕",items:[["ラットプルダウン",32,"8-10",3],["シーテッドケーブルロウ",32,"8-10",3],["ディップチンアシスト",40,"6-8",3],["リアデルトフライ",20,"10",3],["アームカール",10,"10",3]]},
-  "3":{label:"脚・腹（重め）",items:[["レッグプレス",47,"8-10",3],["シーテッドレッグカール",20,"10",3],["ヒップスラスト",32,"8-10",4],["レッグエクステンション",25,"10",3],["アブドミナルクランチ",47,"10",3]]},
+  "3":{label:"脚・腹（重め）",items:[["レッグプレス",57,"8-10",3],["シーテッドレッグカール",20,"10",3],["ヒップスラスト",32,"8-10",4],["レッグエクステンション",25,"10",3],["アブドミナルクランチ",47,"10",3]]},
   "5":{label:"押す（軽め）",items:[["チェストプレス",20,"10",3],["インクラインチェストプレス",15,"10",3],["ショルダープレス",15,"10",3],["アシストディップス",47,"8-10",3],["アームカール",10,"10",3]]},
   "6":{label:"脚・腹（軽め）",items:[["シーテッドレッグカール",20,"10",3],["ヒップアブダクション",32,"10",3],["ヒップスラスト",25,"10",3],["シーテッドケーブルロウ",32,"10",3],["アブドミナルクランチ",32,"10",3]]}
  },
@@ -571,7 +573,7 @@ function getDay(dateStr,create){
 function saveDay(dateStr){var d=getDay(dateStr,false);if(d) d.u=Date.now();markDirty("m-"+ymOf(dateStr));}
 
 function weightOptions(info,cur){
-  var list=info.m?STAGES.concat(EXTRA[info.n]||[]).sort(function(a,b){return a-b;}):[0].concat(HOME_W);
+  var list=info.m?stagesFor(info.n):[0].concat(HOME_W);
   if(cur!==""&&cur!=null&&list.indexOf(Number(cur))<0) list=list.concat([Number(cur)]).sort(function(a,b){return a-b;});
   var h=info.m?"":"";
   list.forEach(function(v){
@@ -875,7 +877,7 @@ function openAdd(){
 }
 function closeSheet(){sheet.classList.remove("open");}
 var MAX_REPS=10;
-function stagesFor(name){var l=STAGES.concat(EXTRA[name]||[]);return l.filter(function(v,i){return l.indexOf(v)===i;}).sort(function(a,b){return a-b;});}
+function stagesFor(name){if(ONLY[name]) return ONLY[name].slice();var l=STAGES.concat(EXTRA[name]||[]);return l.filter(function(v,i){return l.indexOf(v)===i;}).sort(function(a,b){return a-b;});}
 function stepWeight(name,w,dir){
   var l=stagesFor(name),v=Number(w),i=l.indexOf(v);
   if(i<0){i=0;while(i<l.length-1&&l[i]<v) i++;if(dir>0&&l[i]>v) return l[i];if(dir<0&&l[i]>v) i--;}
