@@ -812,13 +812,13 @@ function renderMore(){
     if(sync.on()){
       h+='<p>'+esc(c.owner+"/"+c.repo)+' と同期しています。ほかの端末でも同じリポジトリとトークンを設定すると、同じ記録になります。</p>'+
          '<div class="actions" style="margin:0"><button class="btn solid" data-act="syncNow">今すぐ同期</button><button class="btn" data-act="syncOff">この端末の同期をやめる</button></div>'+
-         '<h3 style="margin:16px 0 4px;font-size:15px">ほかの端末を合言葉でつなぐ</h3><p>合言葉を決めると、この端末の同期設定を暗号化した内容を作ります。それを公開サイトに置くと、ほかの端末は合言葉を1回入れるだけでつながります。</p>'+
+         '<details style="margin-top:16px"'+(sync.keyOut?' open':'')+'><summary style="cursor:pointer;font-size:15px;font-weight:600">合言葉を作り直す</summary><p>合言葉を決めると、この端末の同期設定を暗号化した内容を作ります。それを公開サイトに置くと、ほかの端末は合言葉を1回入れるだけでつながります。</p>'+
          '<label class="lbl" for="kp1">合言葉（12文字以上）</label><input id="kp1" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
          '<label class="lbl" for="kp2">合言葉（確認）</label><input id="kp2" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
          '<div class="actions"><button class="btn" data-act="keyMake">暗号化した内容を作る</button></div>'+
          (sync.keyOut?'<p>できました。下の内容を公開サイトの sync-key.json として置くと、ほかの端末は合言葉だけでつながります。合言葉は忘れないよう控えてください。</p>'+
          '<div class="actions"><button class="btn solid" data-act="keyCopy">コピーする</button></div>'+
-         '<textarea id="keyOut" readonly style="width:100%;box-sizing:border-box;height:90px;font-size:12px">'+esc(sync.keyOut)+'</textarea>':'');
+         '<textarea id="keyOut" readonly style="width:100%;box-sizing:border-box;height:90px;font-size:12px">'+esc(sync.keyOut)+'</textarea>':'')+'</details>';
     }else{
       if(sync.keyBlob) h+=keyJoinHtml();
       h+='<p>記録用の<b>非公開</b>リポジトリと、そのリポジトリだけに使えるトークンを入れると、どの端末でも同じ記録になります。トークンはこの端末の中だけに保存されます。</p>'+
