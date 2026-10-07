@@ -186,7 +186,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .tabs button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
 .status{font-size:12px;color:var(--faint);margin-top:28px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
-#syOwner,#syRepo,#syToken{width:100%;box-sizing:border-box}
+#syOwner,#syRepo,#syToken,#kp1,#kp2,#kpJoin{width:100%;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -626,6 +626,7 @@ function renderRec(){
   if(curDate!==today) h+='<button class="btn" data-act="today">今日へ</button>';
   h+="</div>";
   h+='<label class="lbl" for="note">メモ（体調・気づいたこと）</label><textarea id="note" data-f="note">'+esc(day?day.note:"")+"</textarea>";
+  if(!sync.on()&&sync.keyBlob) h+='<section class="sec">'+keyJoinHtml()+'<p id="syncmsg"></p></section>';
   h+='<p class="status" id="status">'+esc(statusText())+"</p>";
   app.innerHTML=h;
 }
@@ -810,14 +811,21 @@ function renderMore(){
     h+='<section class="sec"><h2>端末間の同期（GitHub）</h2>';
     if(sync.on()){
       h+='<p>'+esc(c.owner+"/"+c.repo)+' と同期しています。ほかの端末でも同じリポジトリとトークンを設定すると、同じ記録になります。</p>'+
-         '<div class="actions" style="margin:0"><button class="btn solid" data-act="syncNow">今すぐ同期</button><button class="btn" data-act="syncOff">この端末の同期をやめる</button></div>';
+         '<div class="actions" style="margin:0"><button class="btn solid" data-act="syncNow">今すぐ同期</button><button class="btn" data-act="syncOff">この端末の同期をやめる</button></div>'+
+         '<h3 style="margin:16px 0 4px;font-size:15px">ほかの端末を合言葉でつなぐ</h3><p>合言葉を決めると、この端末の同期設定を暗号化した内容を作ります。それを公開サイトに置くと、ほかの端末は合言葉を1回入れるだけでつながります。</p>'+
+         '<label class="lbl" for="kp1">合言葉（12文字以上）</label><input id="kp1" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
+         '<label class="lbl" for="kp2">合言葉（確認）</label><input id="kp2" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
+         '<div class="actions"><button class="btn" data-act="keyMake">暗号化した内容を作る</button></div>'+
+         (sync.keyOut?'<p>できました。下の内容を公開サイトの sync-key.json として置くと、ほかの端末は合言葉だけでつながります。合言葉は忘れないよう控えてください。</p>'+
+         '<textarea id="keyOut" readonly style="width:100%;box-sizing:border-box;height:90px;font-size:12px">'+esc(sync.keyOut)+'</textarea>':'');
     }else{
+      if(sync.keyBlob) h+=keyJoinHtml();
       h+='<p>記録用の<b>非公開</b>リポジトリと、そのリポジトリだけに使えるトークンを入れると、どの端末でも同じ記録になります。トークンはこの端末の中だけに保存されます。</p>'+
          '<label class="lbl" for="syOwner">GitHubのユーザー名</label><input id="syOwner" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.owner||"")+'" placeholder="例：Ginji001">'+
          '<label class="lbl" for="syRepo">リポジトリ名</label><input id="syRepo" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.repo||"")+'" placeholder="例：kintore-data">'+
          '<label class="lbl" for="syToken">トークン</label><input id="syToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">'+
          '<div class="actions"><button class="btn solid" data-act="syncConnect">接続する</button></div>'+
-         '<p>接続するとブラウザ（Chromeなど）のパスワード管理に保存できます。保存すると、同じアカウントのほかの端末では起動時に自動で接続されます。</p>';
+         '';
     }
     h+='<p id="syncmsg"></p></section>';
   }
@@ -1001,13 +1009,14 @@ function handleAct(b){
     saveDay(curDate);renderRec();return;
   }
   if(a==="syncConnect"){syncConnect();return;}
+  if(a==="keyJoin"){joinWithKey();return;}
+  if(a==="keyMake"){makeKey();return;}
   if(a==="syncNow"){var sm=document.getElementById("syncmsg");if(sm) sm.textContent="同期しています…";
     Promise.all(allMonthKeys().map(loadMonth)).then(function(){return Promise.all(["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;})).map(function(n){return sync.doc(n).catch(function(e){return e;});}));})
     .then(function(r){var bad=r.filter(function(x){return x instanceof Error;});var m=document.getElementById("syncmsg");if(m) m.textContent=bad.length?"一部同期できませんでした："+bad[0].message:"同期しました。";});return;}
   if(a==="syncOff"){if(!confirm("この端末の同期設定（トークン）を消します。記録はこの端末に残ります。よろしいですか？")) return;
-    sync.cfg=null;try{localStorage.removeItem("kintore:sync");localStorage.removeItem("kintore:sha");localStorage.setItem("kintore:credAsked","1");}catch(e){}
-    if(navigator.credentials&&navigator.credentials.preventSilentAccess) navigator.credentials.preventSilentAccess().catch(function(){});
-    sync.sha={};sync.err=null;rerender();return;}
+    sync.cfg=null;try{localStorage.removeItem("kintore:sync");localStorage.removeItem("kintore:sha");}catch(e){}
+    sync.sha={};checkSyncKey();sync.err=null;rerender();return;}
   if(["showJson","export","import"].indexOf(a)<0) day=getDay(curDate,true);
   if(a==="delEntry"){
     if(!confirm(day.entries[i].ex+"をこの日の記録から削除しますか？")) return;
@@ -1066,6 +1075,11 @@ app.addEventListener("change",function(ev){
   }
 });
 
+function keyJoinHtml(){
+  return '<h2>ほかの端末と同期する</h2><p>合言葉を入れると、ほかの端末と同じ記録につながります（この端末で1回だけ）。</p>'+
+    '<label class="lbl" for="kpJoin">合言葉</label><input id="kpJoin" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">'+
+    '<div class="actions"><button class="btn solid" data-act="keyJoin">つなぐ</button></div>';
+}
 function syncMsg(t){var m=document.getElementById("syncmsg");if(m) m.textContent=t;}
 function syncConnect(){
   var o=document.getElementById("syOwner").value.trim(),r=document.getElementById("syRepo").value.trim(),t=document.getElementById("syToken").value.trim();
@@ -1083,7 +1097,6 @@ function connectSync(o,r,t,manual){
     if(!info.private) throw new Error("このリポジトリは公開されています。記録は非公開リポジトリにだけ保存します");
     try{localStorage.setItem("kintore:sync",JSON.stringify(sync.cfg));}catch(e){}
     sync.sha={};sync.saveSha();
-    if(manual) saveCred();
     syncMsg("接続しました。記録を同期しています…");
     var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
     return Promise.all(allMonthKeys().map(loadMonth)).then(function(){
@@ -1096,28 +1109,53 @@ function connectSync(o,r,t,manual){
     return false;
   });
 }
-/* ブラウザのパスワード管理（Chromeなど）に同期設定を保存。Googleアカウントで同期していれば、ほかの端末にも届く */
-function saveCred(){
-  if(!window.PasswordCredential||!navigator.credentials||!sync.cfg) return Promise.resolve();
-  try{
-    var c=new PasswordCredential({id:sync.cfg.owner+"/"+sync.cfg.repo,password:sync.cfg.token,name:"筋トレ記録の同期"});
-    return navigator.credentials.store(c).then(function(){try{localStorage.setItem("kintore:credSaved","1");}catch(e){}},function(){});
-  }catch(e){return Promise.resolve();}
-}
-/* 同期が未設定の端末：ブラウザに保存済みの設定があれば自動で接続する */
-function autoConnect(){
-  if(sync.cfg||store.mode==="db"||!window.PasswordCredential||!navigator.credentials) return Promise.resolve(false);
-  var asked=false;try{asked=!!localStorage.getItem("kintore:credAsked");}catch(e){}
-  return navigator.credentials.get({password:true,mediation:"silent"}).catch(function(){return null;}).then(function(c){
-    if(c||asked) return c;
-    try{localStorage.setItem("kintore:credAsked","1");}catch(e){}
-    return navigator.credentials.get({password:true,mediation:"optional"}).catch(function(){return null;});
-  }).then(function(c){
-    if(!c||!c.password||!/^[^\/]+\/[^\/]+$/.test(c.id||"")) return false;
-    var parts=c.id.split("/");
-    try{localStorage.setItem("kintore:credSaved","1");}catch(e){}
-    return connectSync(parts[0],parts[1],c.password,false);
+/* ---------- 合言葉で接続（Gitベース） ----------
+   同期の設定（ユーザー名・リポジトリ名・トークン）を合言葉で暗号化し、公開サイトの sync-key.json に置く。
+   新しい端末は合言葉を1回入れるだけでつながる。合言葉とトークンそのものはどこにも送らない。 */
+var KEY_ITER=1000000;
+function b64(u){var s="";for(var i=0;i<u.length;i++) s+=String.fromCharCode(u[i]);return btoa(s);}
+function unb64(t){var b=atob(t),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++) u[i]=b.charCodeAt(i);return u;}
+function keyFrom(pass,salt,iter){
+  return crypto.subtle.importKey("raw",new TextEncoder().encode(pass.normalize("NFC")),"PBKDF2",false,["deriveKey"]).then(function(k){
+    return crypto.subtle.deriveKey({name:"PBKDF2",hash:"SHA-256",salt:salt,iterations:iter},k,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
   });
+}
+function lockCfg(pass){
+  var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  return keyFrom(pass,salt,KEY_ITER).then(function(k){
+    return crypto.subtle.encrypt({name:"AES-GCM",iv:iv},k,new TextEncoder().encode(JSON.stringify({owner:sync.cfg.owner,repo:sync.cfg.repo,token:sync.cfg.token})));
+  }).then(function(ct){return {app:"kintore-sync",v:1,kdf:"PBKDF2-SHA256",iter:KEY_ITER,salt:b64(salt),iv:b64(iv),ct:b64(new Uint8Array(ct))};});
+}
+function unlockCfg(blob,pass){
+  return keyFrom(pass,unb64(blob.salt),blob.iter).then(function(k){
+    return crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(blob.iv)},k,unb64(blob.ct));
+  }).then(function(pt){return JSON.parse(new TextDecoder().decode(pt));},function(){throw new Error("合言葉が違います");});
+}
+/* 公開サイトに合言葉ファイルがあるか確認（同期が未設定の端末だけ） */
+function checkSyncKey(){
+  if(sync.cfg||store.mode==="db"||!window.crypto||!crypto.subtle) return Promise.resolve();
+  return fetch("sync-key.json",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+    if(j&&j.app==="kintore-sync"&&j.ct){sync.keyBlob=j;sync.repaint();}
+  },function(){});
+}
+function joinWithKey(){
+  var el=document.getElementById("kpJoin"),pass=el?el.value:"";
+  if(!pass){syncMsg("合言葉を入れてください。");return;}
+  syncMsg("合言葉を確かめています…");
+  unlockCfg(sync.keyBlob,pass).then(function(c){
+    if(!c||!c.owner||!c.repo||!c.token) throw new Error("合言葉ファイルの中身が正しくありません");
+    return connectSync(c.owner,c.repo,c.token,false);
+  }).then(function(ok){if(ok){sync.keyBlob=null;rerender();}},function(e){syncMsg(e&&e.message||String(e));});
+}
+function makeKey(){
+  var p1=(document.getElementById("kp1")||{}).value||"",p2=(document.getElementById("kp2")||{}).value||"";
+  if(p1.length<12){syncMsg("合言葉は12文字以上にしてください（公開サイトに置くため、推測されにくいものに）。");return;}
+  if(p1!==p2){syncMsg("2回入れた合言葉が一致しません。");return;}
+  syncMsg("暗号化しています…");
+  lockCfg(p1).then(function(j){
+    sync.keyOut=JSON.stringify(j);rerender();
+    var t=document.getElementById("keyOut");if(t) t.select();
+  },function(e){syncMsg("作れませんでした："+(e&&e.message||e));});
 }
 window.addEventListener("online",function(){sync.bootAt=0;sync.startup();});
 document.addEventListener("visibilitychange",function(){
@@ -1128,7 +1166,7 @@ document.addEventListener("visibilitychange",function(){
 window.addEventListener("pageshow",function(e){if(e.persisted) sync.startup();});
 document.addEventListener("focusout",function(){setTimeout(function(){
   if(sync.dirtyView){var a=document.activeElement;if(!(a&&app.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))){sync.dirtyView=false;rerender();}}
-},0);});
+},400);});  // ボタンを押した直後に描き直すと押した位置がずれるため、少し待つ
 
 /* ---------- 起動 ---------- */
 if(window.claude&&typeof window.claude.use==="function"){
@@ -1139,9 +1177,8 @@ if(window.claude&&typeof window.claude.use==="function"){
   if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
   sync.busy=sync.on(); // 起動時の同期が終わるまで個別の同期は待つ
   idb.open().then(function(){store.mode="idb";},function(){}).then(go).catch(function(){}).then(function(){
-    if(!sync.on()) return autoConnect();
-    var saved=false;try{saved=!!localStorage.getItem("kintore:credSaved");}catch(e){}
-    return sync.startup().then(function(){if(!saved&&!sync.err) return saveCred();});
+    if(!sync.on()) return checkSyncKey();
+    return sync.startup();
   });
 }
 (function connect(){
