@@ -4,3 +4,5 @@
 backup/
 # 個人の記録データは入れない（README の決まり）
 記録/
+# 合言葉で暗号化した同期設定（公開してよいもの）
+!kintore-app/sync-key.json
