@@ -1,6 +1,6 @@
 /* 筋トレ記録：オフライン表示用 Service Worker
    アプリ本体を更新したら VERSION を上げる */
-const VERSION = "v12";
+const VERSION = "v13";
 const SHELL = "kintore-shell-" + VERSION;
 const FONTS = "kintore-fonts";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png"];

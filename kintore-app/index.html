@@ -384,6 +384,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
       var lw=self.weight(l),rw=self.weight(r);
       if(!lw&&rw) take=true;          // 中身のない日（メニューを入れただけ）で記録を消さない
       else if(lw&&!rw) take=false;
+      else if(!lw&&!rw&&!lu&&!ru) take=true;   // どちらも自動で入れたメニューだけなら共有済みの方
       else if(lu||ru) take=ru>lu;
       else take=rw>lw;
       if(take&&self.canon(l)!==self.canon(r)){local.days[k]=r;changed=true;}
@@ -472,7 +473,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     },function(e){
       self.err=e&&e.http?e.message:null;
     }).then(function(){
-      self.busy=false;self.booting=null;setStatus(null);self.repaint();
+      self.busy=false;self.booting=null;setStatus(null);planToday();self.repaint();
     });
     return this.booting;
   }
@@ -916,6 +917,21 @@ function addSuggested(name,baseW,tr,ts,sameDow,deload){
   if(sg.last){var d=parse(sg.last.date);e.prev=(d.getMonth()+1)+"/"+d.getDate()+"："+setsSummary(doneSets(sg.last.entry),exInfo(name).u);}
   if(sg.up) e.up=sg.up;
 }
+/* 今日のメニューを自動で入れる。まだ手を付けていない（編集も記録もない）日は、同期で記録が増えたら作り直す
+   → どの端末でも同じ記録から同じ増量の判定になる */
+function planToday(){
+  if(!settings()||!program().days[String(parse(today).getDay())]||!docs["m-"+ymOf(today)]) return false;
+  var m=docs["m-"+ymOf(today)],cur=m.days&&m.days[today];
+  if(cur&&(cur.u||sync.weight(cur)>0)) return false;
+  var keep=curDate,before=cur?sync.canon(cur):null;
+  curDate=today;if(m.days) delete m.days[today];
+  insertPlan();
+  curDate=keep;
+  if(sync.canon(m.days[today])===before) return false;
+  markDirty("m-"+ymOf(today));
+  if(view==="rec") sync.repaint();
+  return true;
+}
 function insertPlan(){
   var plan=program().days[String(parse(curDate).getDay())];if(!plan) return;
   var wi=weekInfo(curDate),deload=!!(wi&&wi.w===program().weeks+1);
@@ -946,7 +962,7 @@ function go(){
   return Promise.all(need).then(function(){
     var st=settings();
     if(st&&(!st.program||st.program.version!==DEFAULT_PROGRAM.version)){st.program=JSON.parse(JSON.stringify(DEFAULT_PROGRAM));markDirty("settings",true);}
-    if(view==="rec"&&curDate===today&&!getDay(today,false)&&program().days[String(parse(today).getDay())]){insertPlan();markDirty("m-"+ymOf(today));}
+    if(!sync.busy) planToday();
     rerender();
   });
 }
@@ -1072,7 +1088,7 @@ function connectSync(o,r,t,manual){
     var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
     return Promise.all(allMonthKeys().map(loadMonth)).then(function(){
       return names.reduce(function(p,n){return p.then(function(){return sync.doc(n);});},Promise.resolve());
-    }).then(function(){sync.busy=false;sync.bootAt=Date.now();setStatus(null);rerender();syncMsg("同期しました。");return true;});
+    }).then(function(){sync.busy=false;sync.bootAt=Date.now();setStatus(null);planToday();rerender();syncMsg("同期しました。");return true;});
   }).catch(function(e){
     sync.busy=false;
     if(!localStorage.getItem("kintore:sync")) sync.cfg=prev;
