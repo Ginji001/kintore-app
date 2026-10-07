@@ -817,6 +817,7 @@ function renderMore(){
          '<label class="lbl" for="kp2">合言葉（確認）</label><input id="kp2" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
          '<div class="actions"><button class="btn" data-act="keyMake">暗号化した内容を作る</button></div>'+
          (sync.keyOut?'<p>できました。下の内容を公開サイトの sync-key.json として置くと、ほかの端末は合言葉だけでつながります。合言葉は忘れないよう控えてください。</p>'+
+         '<div class="actions"><button class="btn solid" data-act="keyCopy">コピーする</button></div>'+
          '<textarea id="keyOut" readonly style="width:100%;box-sizing:border-box;height:90px;font-size:12px">'+esc(sync.keyOut)+'</textarea>':'');
     }else{
       if(sync.keyBlob) h+=keyJoinHtml();
@@ -1011,6 +1012,7 @@ function handleAct(b){
   if(a==="syncConnect"){syncConnect();return;}
   if(a==="keyJoin"){joinWithKey();return;}
   if(a==="keyMake"){makeKey();return;}
+  if(a==="keyCopy"){var kt=sync.keyOut||"";(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(kt):Promise.reject()).then(function(){syncMsg("コピーしました。Claudeのチャットに貼り付けてください。");},function(){var t=document.getElementById("keyOut");if(t){t.removeAttribute("readonly");t.focus();t.setSelectionRange(0,kt.length);}syncMsg("自動でコピーできませんでした。枠の中の文字を選んでコピーしてください。");});return;}
   if(a==="syncNow"){var sm=document.getElementById("syncmsg");if(sm) sm.textContent="同期しています…";
     Promise.all(allMonthKeys().map(loadMonth)).then(function(){return Promise.all(["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;})).map(function(n){return sync.doc(n).catch(function(e){return e;});}));})
     .then(function(r){var bad=r.filter(function(x){return x instanceof Error;});var m=document.getElementById("syncmsg");if(m) m.textContent=bad.length?"一部同期できませんでした："+bad[0].message:"同期しました。";});return;}
