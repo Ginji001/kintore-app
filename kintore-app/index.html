@@ -318,10 +318,13 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
   load:function(){
     try{this.cfg=JSON.parse(localStorage.getItem("kintore:sync")||"null");}catch(e){this.cfg=null;}
     try{this.pending=JSON.parse(localStorage.getItem("kintore:pending")||"{}");}catch(e){this.pending={};}
+    try{this.sha=JSON.parse(localStorage.getItem("kintore:sha")||"{}");}catch(e){this.sha={};}
   },
+  saveSha:function(){try{localStorage.setItem("kintore:sha",JSON.stringify(this.sha));}catch(e){}},
   on:function(){return !!(this.cfg&&this.cfg.token&&store.mode!=="db");},
   savePending:function(){try{localStorage.setItem("kintore:pending",JSON.stringify(this.pending));}catch(e){}},
   text:function(){
+    if(this.busy) return "ほかの端末の記録を読み込んでいます…";
     if(this.err) return "同期できませんでした："+this.err+"（記録はこの端末に保存済み。つながったら自動で送ります）";
     var n=Object.keys(this.pending).length;
     if(n) return "記録はこの端末に保存済み。GitHubへの送信待ちがあります（つながったら自動で送ります）。";
@@ -347,7 +350,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     return this.api(this.file(n)).then(function(r){
       if(r.status===404) return null;
       if(!r.ok) throw self.httpErr(r.status);
-      return r.json().then(function(j){self.sha[n]=j.sha;return {data:JSON.parse(self.b64d(j.content)),sha:j.sha};});
+      return r.json().then(function(j){self.sha[n]=j.sha;self.saveSha();return {data:JSON.parse(self.b64d(j.content)),sha:j.sha};});
     });
   },
   push:function(n,data,sha){
@@ -356,7 +359,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     return this.api(this.file(n),{method:"PUT",body:body}).then(function(r){
       if(r.status===409||r.status===422) return "conflict";
       if(!r.ok) throw self.httpErr(r.status);
-      return r.json().then(function(j){self.sha[n]=j.content.sha;return "ok";});
+      return r.json().then(function(j){self.sha[n]=j.content.sha;self.saveSha();return "ok";});
     });
   },
   httpErr:function(st){
@@ -420,7 +423,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     this.chain[n]=p.catch(function(){});
     return p;
   },
-  maybe:function(n){if(!this.last[n]||Date.now()-this.last[n]>30000){this.last[n]=Date.now();this.doc(n).catch(function(){});}},
+  maybe:function(n){if(this.busy) return;if(!this.last[n]||Date.now()-this.last[n]>30000){this.last[n]=Date.now();this.doc(n).catch(function(){});}},
   schedule:function(n){
     var self=this;this.pending[n]=1;this.savePending();
     clearTimeout(this.timer[n]);this.timer[n]=setTimeout(function(){delete self.timer[n];self.doc(n).catch(function(){});},6000);
@@ -437,6 +440,41 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     var self=this,names=Object.keys(loaded).concat(Object.keys(this.pending)).filter(function(n,i,a){return a.indexOf(n)===i;});
     Object.keys(this.timer).forEach(function(n){clearTimeout(self.timer[n]);delete self.timer[n];});
     return Promise.all(names.map(function(n){return self.doc(n).catch(function(){});}));
+  },
+  /* 起動時・アプリに戻ったとき：GitHub上の全ファイルを確認し、ほかの端末で変わった月と送信待ちを同期する */
+  startup:function(){
+    if(!this.on()) return Promise.resolve();
+    if(this.booting) return this.booting;
+    if(this.bootAt&&Date.now()-this.bootAt<15000) return Promise.resolve();
+    var self=this;this.bootAt=Date.now();this.busy=true;setStatus(null);
+    this.booting=this.api("/contents/data").then(function(r){
+      if(r.status===404) return [];
+      if(!r.ok) throw self.httpErr(r.status);
+      return r.json();
+    }).then(function(list){
+      var remote={};
+      (Array.isArray(list)?list:[]).forEach(function(f){var m=/^(settings|m-\d{4}-\d{2})\.json$/.exec(f.name||"");if(m) remote[m[1]]=f.sha;});
+      var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
+      Object.keys(remote).forEach(function(n){if(names.indexOf(n)<0) names.push(n);});
+      names.forEach(function(n){self.last[n]=Date.now();});
+      return Promise.all(names.map(function(n){return n==="settings"?ensure("settings",defaultSettings):ensure(n,function(){return {days:{}};});})).then(function(){
+        var todo=names.filter(function(n){
+          if(self.pending[n]) return true;
+          if(remote[n]) return remote[n]!==self.sha[n];
+          return !self.isEmpty(n);
+        });
+        Object.keys(self.timer).forEach(function(n){if(todo.indexOf(n)>=0){clearTimeout(self.timer[n]);delete self.timer[n];}});
+        /* 1件ずつ順番に（同時に書き込むと衝突しやすいため） */
+        return todo.reduce(function(p,n){return p.then(function(){return self.doc(n).catch(function(){});});},Promise.resolve());
+      });
+    }).then(function(){
+      if(!self.err){var d=new Date();self.lastAt=d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
+    },function(e){
+      self.err=e&&e.http?e.message:null;
+    }).then(function(){
+      self.busy=false;self.booting=null;setStatus(null);self.repaint();
+    });
+    return this.booting;
   }
 };
 sync.load();
@@ -950,7 +988,7 @@ function handleAct(b){
     Promise.all(allMonthKeys().map(loadMonth)).then(function(){return Promise.all(["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;})).map(function(n){return sync.doc(n).catch(function(e){return e;});}));})
     .then(function(r){var bad=r.filter(function(x){return x instanceof Error;});var m=document.getElementById("syncmsg");if(m) m.textContent=bad.length?"一部同期できませんでした："+bad[0].message:"同期しました。";});return;}
   if(a==="syncOff"){if(!confirm("この端末の同期設定（トークン）を消します。記録はこの端末に残ります。よろしいですか？")) return;
-    sync.cfg=null;try{localStorage.removeItem("kintore:sync");}catch(e){}sync.err=null;rerender();return;}
+    sync.cfg=null;try{localStorage.removeItem("kintore:sync");localStorage.removeItem("kintore:sha");}catch(e){}sync.sha={};sync.err=null;rerender();return;}
   if(["showJson","export","import"].indexOf(a)<0) day=getDay(curDate,true);
   if(a==="delEntry"){
     if(!confirm(day.entries[i].ex+"をこの日の記録から削除しますか？")) return;
@@ -1019,6 +1057,7 @@ function syncConnect(){
   }).then(function(info){
     if(!info.private) throw new Error("このリポジトリは公開されています。記録は非公開リポジトリにだけ保存します");
     try{localStorage.setItem("kintore:sync",JSON.stringify(sync.cfg));}catch(e){}
+    sync.sha={};sync.saveSha();
     m.textContent="接続しました。記録を同期しています…";
     var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
     return Promise.all(allMonthKeys().map(loadMonth)).then(function(){
@@ -1029,12 +1068,13 @@ function syncConnect(){
     var m2=document.getElementById("syncmsg");if(m2) m2.textContent="接続できませんでした："+(e&&e.message||e);
   });
 }
-window.addEventListener("online",function(){sync.all();});
+window.addEventListener("online",function(){sync.bootAt=0;sync.startup();});
 document.addEventListener("visibilitychange",function(){
   if(!sync.on()) return;
   if(document.visibilityState==="hidden"){Object.keys(sync.timer).forEach(function(n){clearTimeout(sync.timer[n]);delete sync.timer[n];sync.doc(n).catch(function(){});});}
-  else{Object.keys(loaded).forEach(function(n){sync.last[n]=0;});sync.all();}
+  else sync.startup();
 });
+window.addEventListener("pageshow",function(e){if(e.persisted) sync.startup();});
 document.addEventListener("focusout",function(){setTimeout(function(){
   if(sync.dirtyView){var a=document.activeElement;if(!(a&&app.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))){sync.dirtyView=false;rerender();}}
 },0);});
@@ -1046,7 +1086,8 @@ if(window.claude&&typeof window.claude.use==="function"){
   // 単体版：ホーム画面アプリとオフライン表示
   if("serviceWorker" in navigator&&location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(function(){});
   if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
-  idb.open().then(function(){store.mode="idb";},function(){}).then(go);
+  sync.busy=sync.on(); // 起動時の同期が終わるまで個別の同期は待つ
+  idb.open().then(function(){store.mode="idb";},function(){}).then(go).catch(function(){}).then(function(){return sync.startup();});
 }
 (function connect(){
   if(!window.claude||typeof window.claude.use!=="function") return;
