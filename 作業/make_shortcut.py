@@ -46,14 +46,15 @@ def type_row(label):
             "Values": {"Enumeration": {"Value": label, "WFSerializationType": "WFStringSubstitutableState"}}}
 today_row = {"Bounded": True, "Operator": 1002, "Property": "Start Date", "Removable": False,
              "Values": {"Number": "7", "Unit": 16}}
-def find(label, latest_one):
+def find(label, latest_one, unit):
+    """latest_one=True：最新の1件／False：今日の分を日ごとに合計した1件（サンプルを1件ずつ処理しないので速い）"""
     u = U(); rows = [type_row(label)]
-    p = {"UUID": u}
-    if latest_one:
-        p.update({"WFContentItemSortProperty": "Start Date", "WFContentItemSortOrder": "Latest First",
-                  "WFContentItemLimitEnabled": True, "WFContentItemLimitNumber": 1.0})
-    else:
+    p = {"UUID": u, "WFContentItemSortProperty": "Start Date", "WFContentItemSortOrder": "Latest First",
+         "WFContentItemLimitEnabled": True, "WFContentItemLimitNumber": 1.0,
+         "WFHKSampleFilteringUnit": unit, "WFHKSampleFilteringFillMissing": False}
+    if not latest_one:
         rows.append(today_row)
+        p["WFHKSampleFilteringGroupBy"] = "Day"
     p["WFContentItemFilter"] = {"Value": {"WFActionParameterFilterPrefix": 1, "WFContentPredicateBoundedDate": False,
                                           "WFActionParameterFilterTemplates": rows},
                                 "WFSerializationType": "WFContentPredicateTableTemplate"}
@@ -63,11 +64,11 @@ def find(label, latest_one):
                                                    "WFInput": attach(out(u, "Health Samples"))}))
     return out(v, "Value")
 
-acts.append(comment("体重・体脂肪率は最新の1件、歩数・アクティブエネルギーは今日の分を読み込みます。"))
-w = find("Weight", True)
-bf = find("Body Fat Percentage", True)
-st = find("Steps", False)
-kc = find("Active Calories", False)
+acts.append(comment("体重・体脂肪率は最新の1件、歩数・アクティブエネルギーは今日の合計を読み込みます。"))
+w = find("Weight", True, "kg")
+bf = find("Body Fat Percentage", True, "%")
+st = find("Steps", False, "count")
+kc = find("Active Calories", False, "kcal")
 txt = U()
 acts.append(act("gettext", {"UUID": txt, "WFTextActionText": tokstr(["W:", w, "\nBF:", bf, "\nST:", st, "\nKC:", kc])}))
 acts.append(act("setclipboard", {"WFInput": attach(out(txt, "Text"))}))
