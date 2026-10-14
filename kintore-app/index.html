@@ -602,6 +602,7 @@ function renderRec(){
   if(plan) ph.push("<b>"+esc(plan.label)+"</b>"); else ph.push("<b>休養日</b>");
   if(wi) ph.push(esc(wi.text)+(wi.phase?"："+esc(wi.phase):""));
   h+='<p class="phase">'+ph.join("　")+"</p>";
+  if(day&&day.hk) h+='<p class="target" style="margin:-8px 0 16px">'+esc(hkText(day.hk))+"</p>";
   var run=day&&day.run,rest=day&&day.rest;
   h+='<div class="toggles">'+(SHOW_RUN?'<button class="chip" data-act="run" aria-pressed="'+!!run+'">🏃 ラン</button>':"")+
      '<button class="chip" data-act="rest" aria-pressed="'+!!rest+'">行けなかった</button></div>';
@@ -638,6 +639,10 @@ function renderRec(){
   h+='<div class="actions">';
   if(plan&&!entries.length) h+='<button class="btn solid" data-act="plan">この日のメニューを入れる</button>';
   h+='<button class="btn" data-act="openAdd">種目を追加</button>';
+  if(curDate===today){
+    if(hkPending()) h+='<button class="btn solid" data-act="hkPaste">ヘルスケアの数値を取り込む</button>';
+    h+='<button class="btn" data-act="hkRun">ヘルスケア連携</button>';
+  }
   if(curDate!==today) h+='<button class="btn" data-act="today">今日へ</button>';
   h+="</div>";
   h+='<label class="lbl" for="note">メモ（体調・気づいたこと）</label><textarea id="note" data-f="note">'+esc(day?day.note:"")+"</textarea>";
@@ -657,7 +662,7 @@ function renderCal(){
   var st=monthStats(statYm),first=parse(statYm+"-01"),n=daysIn(statYm);
   var h=monthHeader(statYm);
   h+='<div class="stats"><span class="stat">🏋️ <b>'+st.lift+'</b> 筋トレ</span>'+(SHOW_RUN?'<span class="stat">🏃 <b>'+st.run+'</b> ラン</span>':"")+'</div>';
-  h+='<p class="sub">'+(SHOW_RUN?"活動日 "+st.active+"日":"今月のセット数 "+st.sets)+"</p>";
+  h+='<p class="sub">'+(SHOW_RUN?"活動日 "+st.active+"日":"今月のセット数 "+st.sets)+weightTrend(statYm)+"</p>";
   h+='<div class="calhead">';
   ["MON","TUE","WED","THU","FRI","SAT","SUN"].forEach(function(w,i){h+='<div class="h'+(i===6?" sun":"")+'" style="font-family:Jost,sans-serif;font-size:11px;letter-spacing:.18em;text-align:center;padding-bottom:10px">'+w+"</div>";});
   h+='</div><div class="cal">';
@@ -1025,6 +1030,63 @@ function recSig(){
   return (dayDone(day)?"1":"0")+prList(day).map(function(e){var b=bestOf(e.ex,[e]);return e.ex+b.w+"x"+b.r;}).join("|");
 }
 
+/* ---------- ヘルスケア連携（iPhoneのショートカット「筋トレ連携」経由） ----------
+   送る：その日の筋トレを {"start","min"} にしてショートカットへ渡し、ワークアウトとして記録してもらう
+   受け取る：ショートカットが体重・体脂肪率・歩数・アクティブエネルギーをクリップボードにコピー → 「取り込む」で読む */
+var HK_SHORTCUT="筋トレ連携";
+function hkPending(){try{return !!localStorage.getItem("kintore:hkPending");}catch(e){return false;}}
+function hkSetPending(v){try{if(v) localStorage.setItem("kintore:hkPending","1"); else localStorage.removeItem("kintore:hkPending");}catch(e){}}
+function hkNum(v){
+  if(v==null) return null;
+  var m=String(v).replace(/[,，]/g,"").match(/-?\d+(\.\d+)?/);
+  return m?Number(m[0]):null;
+}
+function hkText(hk){
+  var a=[];
+  if(hk.w!=null) a.push("体重 "+hk.w+"kg");
+  if(hk.bf!=null) a.push("体脂肪率 "+hk.bf+"%");
+  if(hk.st!=null) a.push("歩数 "+Math.round(hk.st).toLocaleString()+"歩");
+  if(hk.kcal!=null) a.push("活動 "+Math.round(hk.kcal).toLocaleString()+"kcal");
+  return a.join("・");
+}
+function hkParse(txt){
+  var j=JSON.parse(String(txt).trim()),o={};
+  var w=hkNum(j.w),bf=hkNum(j.bf),st=hkNum(j.st),kc=hkNum(j.kcal);
+  if(w!=null&&w>0) o.w=Math.round(w*10)/10;
+  if(bf!=null&&bf>0){if(bf<=1) bf=bf*100;o.bf=Math.round(bf*10)/10;}
+  if(st!=null&&st>=0) o.st=Math.round(st);
+  if(kc!=null&&kc>=0) o.kcal=Math.round(kc);
+  if(!Object.keys(o).length) throw new Error("数値が見つかりません");
+  return o;
+}
+function hkRun(){
+  var day=getDay(today,true),payload={};
+  if(dayHasLift(day)&&!day.hkSent){
+    var t1=day.t1||Date.now(),t0=day.t0||(t1-60*60000);
+    var min=Math.max(10,Math.round((t1-t0)/60000)+3),st=new Date(t0);
+    payload={start:st.getFullYear()+"/"+pad(st.getMonth()+1)+"/"+pad(st.getDate())+" "+pad(st.getHours())+":"+pad(st.getMinutes()),min:min};
+    day.hkSent=Date.now();saveDay(today);
+  }
+  hkSetPending(true);renderRec();
+  location.href="shortcuts://run-shortcut?name="+encodeURIComponent(HK_SHORTCUT)+"&input=text&text="+encodeURIComponent(JSON.stringify(payload));
+}
+function hkApply(txt){
+  var o;
+  try{o=hkParse(txt);}catch(e){alert("ヘルスケアの数値を読み取れませんでした。ショートカット「"+HK_SHORTCUT+"」を実行してから、もう一度押してください。");return;}
+  var day=getDay(today,true);o.at=Date.now();day.hk=o;saveDay(today);hkSetPending(false);renderRec();
+}
+function hkPaste(){
+  var fallback=function(){var t=prompt("ショートカットがコピーした内容を貼り付けてください","");if(t) hkApply(t);};
+  if(navigator.clipboard&&navigator.clipboard.readText) navigator.clipboard.readText().then(hkApply,fallback);
+  else fallback();
+}
+function weightTrend(ym){
+  var m=monthDoc(ym),ks=Object.keys(m.days||{}).filter(function(k){return ymOf(k)===ym&&m.days[k].hk&&m.days[k].hk.w!=null;}).sort();
+  if(!ks.length) return "";
+  var a=m.days[ks[0]].hk.w,b=m.days[ks[ks.length-1]].hk.w,df=Math.round((b-a)*10)/10;
+  return "　体重 "+b+"kg"+(ks.length>1?"（月初から "+(df>0?"+":df<0?"−":"±")+Math.abs(df)+"kg）":"");
+}
+
 /* ---------- 休憩タイマー（セットの回数を入れると始まる） ---------- */
 var TIPS={
  "チェストプレス":["肩甲骨を寄せて下げたまま押す","グリップは胸の中央の高さに合わせる","押し切っても肘は伸ばしきらない"],
@@ -1104,6 +1166,8 @@ function handleAct(b){
   var a=b.dataset.act,i=+b.dataset.i,j=+b.dataset.j,day;
   if(a==="restAdd"){rest.end=Math.max(rest.end,Date.now())+30000;rest.buzz=false;drawRest();return;}
   if(a==="restStop"){stopRest();return;}
+  if(a==="hkRun"){hkRun();return;}
+  if(a==="hkPaste"){hkPaste();return;}
   if(a==="day"){curDate=addDays(curDate,+b.dataset.n);go();return;}
   if(a==="today"){curDate=today;go();return;}
   if(a==="month"){statYm=addMonths(statYm,+b.dataset.n);go();return;}
@@ -1177,7 +1241,9 @@ document.addEventListener("keydown",function(ev){if(ev.key==="Escape") closeShee
 
 app.addEventListener("input",function(ev){
   var t=ev.target,f=t.dataset.f;if(!f) return;
-  if(f==="r"){var day=getDay(curDate,true);day.entries[+t.dataset.i].sets[+t.dataset.j].r=t.value===""?"":Number(t.value);saveDay(curDate);}
+  if(f==="r"){var day=getDay(curDate,true);day.entries[+t.dataset.i].sets[+t.dataset.j].r=t.value===""?"":Number(t.value);
+    if(curDate===today&&Number(t.value)>0){var nw=Date.now();if(!day.t0) day.t0=nw;day.t1=nw;}
+    saveDay(curDate);}
   else if(f==="note"){var d2=getDay(curDate,true);d2.note=t.value;saveDay(curDate);}
 });
 app.addEventListener("change",function(ev){
