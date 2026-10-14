@@ -46,7 +46,7 @@ def type_row(label, fmt):
         return {"Property": "Type", "Operator": 4, "VariableOverrides": {}, "Enumeration": label, "Removable": False, "Bounded": True}
     return {"Bounded": True, "Operator": 4, "Property": "Type", "Removable": False,
             "Values": {"Enumeration": {"Value": label, "WFSerializationType": "WFStringSubstitutableState"}}}
-def find(label, per_day, unit, fmt="old"):
+def find(label, per_day, unit, fmt="new"):
     """per_day=False：最新の1件／True：日ごとの合計の最新1件（＝今日の合計）"""
     u = U()
     p = {"UUID": u, "WFContentItemSortProperty": "Start Date", "WFContentItemSortOrder": "Latest First",
@@ -56,6 +56,8 @@ def find(label, per_day, unit, fmt="old"):
     p["WFContentItemFilter"] = {"Value": {"WFActionParameterFilterPrefix": 1, "WFContentPredicateBoundedDate": False,
                                           "WFActionParameterFilterTemplates": [type_row(label, fmt)]},
                                 "WFSerializationType": "WFContentPredicateTableTemplate"}
+    # 直前のアクションの出力を受け取ると「検索」ではなく「絞り込み」になり、直前のサンプルしか返さないため、何も渡さないアクションをはさむ
+    acts.append(act("nothing", {}))
     acts.append(act("filter.health.quantity", p))
     v, t = U(), U()
     acts.append(act("properties.health.quantity", {"UUID": v, "WFContentItemPropertyName": "Value",
@@ -66,7 +68,7 @@ def find(label, per_day, unit, fmt="old"):
 
 acts.append(comment("体重・体脂肪率は最新の1件、歩数・アクティブエネルギーは今日の合計を読み込みます。"))
 w, wt = find("Weight", False, "kg")
-w2, w2t = find("Body Mass", False, "kg", "new")
+w2, w2t = find("Body Mass", False, "kg")
 bf, bft = find("Body Fat Percentage", False, "%")
 st, stt = find("Steps", True, "count")
 kc, kct = find("Active Calories", True, "kcal")
