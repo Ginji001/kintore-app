@@ -41,36 +41,39 @@ acts.append(act("health.workout.log", {"UUID": U(),
 acts.append(act("conditional", {"GroupingIdentifier": g, "WFControlFlowMode": 2, "UUID": U()}))
 
 # --- 読み込み
-def type_row(label):
+def type_row(label, fmt):
+    if fmt == "old":  # 実際に配布されているショートカットで確認できた形
+        return {"Property": "Type", "Operator": 4, "VariableOverrides": {}, "Enumeration": label, "Removable": False, "Bounded": True}
     return {"Bounded": True, "Operator": 4, "Property": "Type", "Removable": False,
             "Values": {"Enumeration": {"Value": label, "WFSerializationType": "WFStringSubstitutableState"}}}
-today_row = {"Bounded": True, "Operator": 1002, "Property": "Start Date", "Removable": False,
-             "Values": {"Number": "7", "Unit": 16}}
-def find(label, latest_one, unit):
-    """latest_one=True：最新の1件／False：今日の分を日ごとに合計した1件（サンプルを1件ずつ処理しないので速い）"""
-    u = U(); rows = [type_row(label)]
+def find(label, per_day, unit, fmt="old"):
+    """per_day=False：最新の1件／True：日ごとの合計の最新1件（＝今日の合計）"""
+    u = U()
     p = {"UUID": u, "WFContentItemSortProperty": "Start Date", "WFContentItemSortOrder": "Latest First",
          "WFContentItemLimitEnabled": True, "WFContentItemLimitNumber": 1.0,
          "WFHKSampleFilteringUnit": unit, "WFHKSampleFilteringFillMissing": False}
-    if not latest_one:
-        rows.append(today_row)
-        p["WFHKSampleFilteringGroupBy"] = "Day"
+    if per_day: p["WFHKSampleFilteringGroupBy"] = "Day"
     p["WFContentItemFilter"] = {"Value": {"WFActionParameterFilterPrefix": 1, "WFContentPredicateBoundedDate": False,
-                                          "WFActionParameterFilterTemplates": rows},
+                                          "WFActionParameterFilterTemplates": [type_row(label, fmt)]},
                                 "WFSerializationType": "WFContentPredicateTableTemplate"}
     acts.append(act("filter.health.quantity", p))
-    v = U()
+    v, t = U(), U()
     acts.append(act("properties.health.quantity", {"UUID": v, "WFContentItemPropertyName": "Value",
                                                    "WFInput": attach(out(u, "Health Samples"))}))
-    return out(v, "Value")
+    acts.append(act("properties.health.quantity", {"UUID": t, "WFContentItemPropertyName": "Type",
+                                                   "WFInput": attach(out(u, "Health Samples"))}))
+    return out(v, "Value"), out(t, "Type")
 
 acts.append(comment("体重・体脂肪率は最新の1件、歩数・アクティブエネルギーは今日の合計を読み込みます。"))
-w = find("Weight", True, "kg")
-bf = find("Body Fat Percentage", True, "%")
-st = find("Steps", False, "count")
-kc = find("Active Calories", False, "kcal")
+w, wt = find("Weight", False, "kg")
+w2, w2t = find("Body Mass", False, "kg", "new")
+bf, bft = find("Body Fat Percentage", False, "%")
+st, stt = find("Steps", True, "count")
+kc, kct = find("Active Calories", True, "kcal")
 txt = U()
-acts.append(act("gettext", {"UUID": txt, "WFTextActionText": tokstr(["W:", w, "\nBF:", bf, "\nST:", st, "\nKC:", kc])}))
+acts.append(act("gettext", {"UUID": txt, "WFTextActionText": tokstr([
+    "W:", w, "\nBF:", bf, "\nST:", st, "\nKC:", kc,
+    "\nT:", wt, " / ", w2t, " ", w2, " / ", bft, " / ", stt, " / ", kct])}))
 acts.append(act("setclipboard", {"WFInput": attach(out(txt, "Text"))}))
 acts.append(comment("コピーしたら記録アプリに戻り「ヘルスケアの数値を取り込む」を押します。"))
 

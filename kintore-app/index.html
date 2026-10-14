@@ -1055,7 +1055,7 @@ function hkParse(txt){
   var t=String(txt).trim(),j={},cur=null;
   if(t.charAt(0)==="{"){j=JSON.parse(t);}
   else t.split(/\r?\n/).forEach(function(line){
-    var m=/^(W|BF|ST|KC):(.*)$/.exec(line.trim());
+    var m=/^([A-Z]+):(.*)$/.exec(line.trim());
     if(m){cur=m[1];j[cur]=m[2];} else if(cur) j[cur]+="\n"+line;
   });
   var o={},w=hkNum(j.W!=null?j.W:j.w),bf=hkNum(j.BF!=null?j.BF:j.bf),st=hkSum(j.ST!=null?j.ST:j.st),kc=hkSum(j.KC!=null?j.KC:j.kcal);
