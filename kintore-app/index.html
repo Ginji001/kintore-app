@@ -1033,7 +1033,7 @@ function recSig(){
 /* ---------- ヘルスケア連携（iPhoneのショートカット「筋トレ連携」経由） ----------
    送る：その日の筋トレを {"start","min"} にしてショートカットへ渡し、ワークアウトとして記録してもらう
    受け取る：ショートカットが体重・体脂肪率・歩数・アクティブエネルギーをクリップボードにコピー → 「取り込む」で読む */
-var HK_SHORTCUT="筋トレ連携";
+var HK_SHORTCUT="筋トレ連携",HK_READ="ヘルスケア読み込み";
 function hkPending(){try{return !!localStorage.getItem("kintore:hkPending");}catch(e){return false;}}
 function hkSetPending(v){try{if(v) localStorage.setItem("kintore:hkPending","1"); else localStorage.removeItem("kintore:hkPending");}catch(e){}}
 function hkNum(v){
@@ -1068,11 +1068,13 @@ function hkRun(){
     day.hkSent=Date.now();saveDay(today);
   }
   hkSetPending(true);renderRec();
-  location.href="shortcuts://run-shortcut?name="+encodeURIComponent(HK_SHORTCUT)+"&input=text&text="+encodeURIComponent(JSON.stringify(payload));
+  /* 送るワークアウトがあれば「筋トレ連携」（記録してから「ヘルスケア読み込み」を実行）、なければ読み込みだけ */
+  location.href=payload.min?"shortcuts://run-shortcut?name="+encodeURIComponent(HK_SHORTCUT)+"&input=text&text="+encodeURIComponent(JSON.stringify(payload))
+    :"shortcuts://run-shortcut?name="+encodeURIComponent(HK_READ);
 }
 function hkApply(txt){
   var o;
-  try{o=hkParse(txt);}catch(e){alert("ヘルスケアの数値を読み取れませんでした。ショートカット「"+HK_SHORTCUT+"」を実行してから、もう一度押してください。");return;}
+  try{o=hkParse(txt);}catch(e){alert("ヘルスケアの数値を読み取れませんでした。ショートカット「"+HK_READ+"」を実行してから、もう一度押してください。");return;}
   var day=getDay(today,true);o.at=Date.now();day.hk=o;saveDay(today);hkSetPending(false);renderRec();
 }
 function hkPaste(){
