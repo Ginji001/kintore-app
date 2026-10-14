@@ -32,7 +32,7 @@ acts.append(act("conditional", {"GroupingIdentifier": g, "WFControlFlowMode": 0,
                                  "WFInput": {"Type": "Variable", "Variable": attach(out(min_u, "Dictionary Value"))}}))
 acts.append(act("getvalueforkey", {"UUID": start_u, "WFDictionaryKey": "start", "WFGetDictionaryValueType": "Value",
                                     "WFInput": attach(out(dict_u, "Dictionary"))}))
-acts.append(act("detect.date", {"UUID": date_u, "WFInput": tokstr([out(start_u, "Dictionary Value")])}))
+acts.append(act("detect.date", {"UUID": date_u, "WFInput": attach(out(start_u, "Dictionary Value"))}))
 acts.append(act("health.workout.log", {"UUID": U(),
     "WFWorkoutReadableActivityType": "Traditional Strength Training",
     "WFWorkoutDate": tokstr([out(date_u, "Dates")]),
