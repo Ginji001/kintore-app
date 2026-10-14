@@ -1080,8 +1080,9 @@ function hkRun(){
 }
 function hkApply(txt){
   var o;
+  try{getDay(today,true).hkRaw=String(txt).slice(0,600);saveDay(today);}catch(e){}
   try{o=hkParse(txt);}catch(e){alert("ヘルスケアの数値を読み取れませんでした。ショートカット「"+HK_SHORTCUT+"」を実行してから、もう一度押してください。");return;}
-  var day=getDay(today,true);o.at=Date.now();day.hk=o;saveDay(today);hkSetPending(false);renderRec();
+  var day=getDay(today,true);o.at=Date.now();day.hk=o;day.hkRaw=String(txt).slice(0,600);saveDay(today);hkSetPending(false);renderRec();
 }
 function hkPaste(){
   var fallback=function(){var t=prompt("ショートカットがコピーした内容を貼り付けてください","");if(t) hkApply(t);};
