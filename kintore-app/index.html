@@ -602,7 +602,7 @@ function renderRec(){
   if(plan) ph.push("<b>"+esc(plan.label)+"</b>"); else ph.push("<b>休養日</b>");
   if(wi) ph.push(esc(wi.text)+(wi.phase?"："+esc(wi.phase):""));
   h+='<p class="phase">'+ph.join("　")+"</p>";
-  if(day&&day.hk) h+='<p class="target" style="margin:-8px 0 16px">'+esc(hkText(day.hk))+"</p>";
+  if(HK_ON&&day&&day.hk) h+='<p class="target" style="margin:-8px 0 16px">'+esc(hkText(day.hk))+"</p>";
   var run=day&&day.run,rest=day&&day.rest;
   h+='<div class="toggles">'+(SHOW_RUN?'<button class="chip" data-act="run" aria-pressed="'+!!run+'">🏃 ラン</button>':"")+
      '<button class="chip" data-act="rest" aria-pressed="'+!!rest+'">行けなかった</button></div>';
@@ -639,7 +639,7 @@ function renderRec(){
   h+='<div class="actions">';
   if(plan&&!entries.length) h+='<button class="btn solid" data-act="plan">この日のメニューを入れる</button>';
   h+='<button class="btn" data-act="openAdd">種目を追加</button>';
-  if(curDate===today){
+  if(HK_ON&&curDate===today){
     if(hkPending()) h+='<button class="btn solid" data-act="hkPaste">ヘルスケアの数値を取り込む</button>';
     h+='<button class="btn" data-act="hkRun">ヘルスケア連携</button>';
   }
@@ -1033,7 +1033,7 @@ function recSig(){
 /* ---------- ヘルスケア連携（iPhoneのショートカット「筋トレ連携」経由） ----------
    送る：その日の筋トレを {"start","min"} にしてショートカットへ渡し、ワークアウトとして記録してもらう
    受け取る：ショートカットが体重・体脂肪率・歩数・アクティブエネルギーをクリップボードにコピー → 「取り込む」で読む */
-var HK_SHORTCUT="筋トレ連携";
+var HK_SHORTCUT="筋トレ連携",HK_ON=false; /* ヘルスケア連携は2026-10-14に中止（Webアプリでは確実に動かせないため）。表示・ボタンとも出さない */
 function hkPending(){try{return !!localStorage.getItem("kintore:hkPending");}catch(e){return false;}}
 function hkSetPending(v){try{if(v) localStorage.setItem("kintore:hkPending","1"); else localStorage.removeItem("kintore:hkPending");}catch(e){}}
 function hkNum(v){
@@ -1090,6 +1090,7 @@ function hkPaste(){
   else fallback();
 }
 function weightTrend(ym){
+  if(!HK_ON) return "";
   var m=monthDoc(ym),ks=Object.keys(m.days||{}).filter(function(k){return ymOf(k)===ym&&m.days[k].hk&&m.days[k].hk.w!=null;}).sort();
   if(!ks.length) return "";
   var a=m.days[ks[0]].hk.w,b=m.days[ks[ks.length-1]].hk.w,df=Math.round((b-a)*10)/10;
