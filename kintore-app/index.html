@@ -185,6 +185,15 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .tabs button{background:none;border:none;padding:12px 0 14px;font-size:13px;color:var(--faint);border-top:2px solid transparent;margin-top:-1px}
 .tabs button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
 .status{font-size:12px;color:var(--faint);margin-top:28px}
+/* 休憩タイマー */
+.restbar{max-width:520px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 22px;border-bottom:1px solid var(--line)}
+.restbar[hidden]{display:none}
+.restbar .rt{font-family:"Jost",sans-serif;font-size:24px;font-weight:400;min-width:60px;line-height:1}
+.restbar .rt.end{color:var(--accent)}
+.restbar .tip{flex:1;font-size:12.5px;color:var(--mute);line-height:1.45}
+.restbar .tip b{display:block;color:var(--ink);font-weight:500;font-size:12px}
+.restbar .rbtn{display:flex;gap:6px}
+body.resting main{padding-bottom:200px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 #syOwner,#syRepo,#syToken,#kp1,#kp2,#kpJoin{width:100%;box-sizing:border-box}
 </style>
@@ -192,7 +201,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 <body>
 <main id="app"></main>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="種目を追加"><div class="in" id="sheetIn"></div></div>
-<nav class="tabs" aria-label="画面切り替え"><div class="inr">
+<nav class="tabs" aria-label="画面切り替え"><div class="restbar" id="restbar" role="timer" hidden></div><div class="inr">
   <button data-tab="rec">記録</button>
   <button data-tab="cal">カレンダー</button>
   <button data-tab="parts">部位</button>
@@ -605,6 +614,9 @@ function renderRec(){
     if(e.tw!=null||e.tr) tgt="目標 "+(e.tw?e.tw+"kg × ":"")+esc(e.tr||"")+(info.u==="秒"?"秒":"回")+" × "+(e.ts||"")+"セット";
     if(ASSIST.indexOf(e.ex)>=0) tgt+=(tgt?"　":"")+"アシストは数字が下がれば前進";
     if(e.prev) tgt+='<br>前回 '+esc(e.prev);
+    var pb=info.m?bestBefore(e.ex,curDate):null,nb=info.m?bestOf(e.ex,[e]):null;
+    if(pb) tgt+='<br>自己ベスト '+pb.w+"kg × "+pb.r+"回";
+    if(pb&&nb&&better(e.ex,nb,pb)) tgt+='<br><span class="upnote">★ 自己ベスト更新 '+nb.w+"kg × "+nb.r+"回</span>";
     if(e.up) tgt+='<br><span class="upnote">'+(e.up.assist?"↓ 前回全セット"+e.up.reps+"回達成のためアシストを":"↑ 前回全セット"+e.up.reps+"回達成のため")+e.up.from+"kg → "+e.up.to+"kgに"+(e.up.assist?"軽減":"増量")+"</span>";
     h+='<section class="entry" data-i="'+i+'"><div class="etop"><h3>'+esc(e.ex)+'</h3><span class="tag">'+esc(info.p)+'</span>'+
        '<button class="x" data-act="delEntry" data-i="'+i+'" aria-label="'+esc(e.ex)+'を削除">×</button></div>'+
@@ -622,6 +634,7 @@ function renderRec(){
     });
     h+="</div></section>";
   });
+  h+=doneHtml(day);
   h+='<div class="actions">';
   if(plan&&!entries.length) h+='<button class="btn solid" data-act="plan">この日のメニューを入れる</button>';
   h+='<button class="btn" data-act="openAdd">種目を追加</button>';
@@ -631,6 +644,7 @@ function renderRec(){
   if(!sync.on()&&sync.keyBlob) h+='<section class="sec">'+keyJoinHtml()+'<p id="syncmsg"></p></section>';
   h+='<p class="status" id="status">'+esc(statusText())+"</p>";
   app.innerHTML=h;
+  recShown=recSig();
 }
 
 /* ---------- カレンダー ---------- */
@@ -955,6 +969,108 @@ function addEntry(name,tw,tr,ts){
   day.rest=false;
 }
 
+/* ---------- 自己ベスト・完了 ---------- */
+var recShown="";
+function setsOk(e){return doneSets(e).filter(function(s){return s.w!==""&&s.w!=null&&!isNaN(Number(s.w));});}
+/* a が b より上か（アシスト系は軽いほど上） */
+function better(name,a,b){
+  if(!a) return false;if(!b) return true;
+  if(a.w!==b.w) return ASSIST.indexOf(name)>=0?a.w<b.w:a.w>b.w;
+  return a.r>b.r;
+}
+function bestOf(name,entries){
+  var best=null;
+  (entries||[]).forEach(function(e){if(e.ex!==name) return;setsOk(e).forEach(function(s){var c={w:Number(s.w),r:Number(s.r)};if(better(name,c,best)) best=c;});});
+  return best;
+}
+function bestBefore(name,before){
+  var best=null;
+  Object.keys(docs).forEach(function(n){
+    if(n.indexOf("m-")!==0||!docs[n]||!docs[n].days) return;
+    var days=docs[n].days;
+    Object.keys(days).forEach(function(k){if(k>=before) return;var b=bestOf(name,days[k].entries);if(better(name,b,best)) best=b;});
+  });
+  return best;
+}
+function dayDone(day){
+  var es=(day&&day.entries)||[];
+  return es.length>0&&es.every(function(e){return (e.sets||[]).length>0&&e.sets.every(function(s){return s.r!==""&&s.r!=null&&Number(s.r)>0;});});
+}
+function volOf(name,sets){
+  if(ASSIST.indexOf(name)>=0||!exInfo(name).m) return 0;
+  return sets.reduce(function(t,s){var w=Number(s.w),r=Number(s.r);return t+(isNaN(w)||isNaN(r)?0:w*r);},0);
+}
+function prList(day){
+  return ((day&&day.entries)||[]).filter(function(e){
+    if(!exInfo(e.ex).m) return false;
+    var pb=bestBefore(e.ex,curDate),nb=bestOf(e.ex,[e]);return !!pb&&better(e.ex,nb,pb);
+  });
+}
+function doneHtml(day){
+  if(!dayDone(day)) return "";
+  var sets=0,vol=0,pv=0,hasPrev=true;
+  day.entries.forEach(function(e){
+    var ds=doneSets(e),v=volOf(e.ex,ds);sets+=ds.length;vol+=v;
+    if(v){var l=findLast(e.ex,curDate,true);if(l) pv+=volOf(e.ex,doneSets(l.entry)); else hasPrev=false;}
+  });
+  var t="<b>完了</b>　"+day.entries.length+"種目・"+sets+"セット";
+  if(vol) t+="・総挙上量 "+vol.toLocaleString()+"kg";
+  if(vol&&hasPrev&&pv){var df=vol-pv;t+="（前回比 "+(df>0?"+":df<0?"−":"±")+Math.abs(df).toLocaleString()+"kg）";}
+  var prs=prList(day);
+  if(prs.length) t+='<br><span class="upnote">★ 自己ベスト更新：'+prs.map(function(e){return esc(e.ex);}).join("、")+"</span>";
+  return '<p class="phase">'+t+"</p>";
+}
+function recSig(){
+  var day=getDay(curDate,false);if(!day) return "";
+  return (dayDone(day)?"1":"0")+prList(day).map(function(e){var b=bestOf(e.ex,[e]);return e.ex+b.w+"x"+b.r;}).join("|");
+}
+
+/* ---------- 休憩タイマー（セットの回数を入れると始まる） ---------- */
+var TIPS={
+ "チェストプレス":["肩甲骨を寄せて下げたまま押す","グリップは胸の中央の高さに合わせる","押し切っても肘は伸ばしきらない"],
+ "インクラインチェストプレス":["胸の上部を意識して斜め上へ押す","肩がすくまないよう首を長く保つ"],
+ "ペックデッキフライ":["肘の角度は最後まで固定","胸の前で一瞬止めて絞る","戻すときもゆっくり"],
+ "アシストディップス":["上体をやや前に倒すと胸に効く","肩が痛くならない深さまで下ろす"],
+ "ラットプルダウン":["胸を張ってバーを鎖骨に向けて引く","腕ではなく肘を下へ引くイメージ","反動を使わず、戻しはゆっくり"],
+ "シーテッドケーブルロウ":["背すじを伸ばし、肩甲骨を寄せてから引く","上体を後ろに倒して引かない"],
+ "ディップチンアシスト":["肩を下げてから引き始める","胸をバーに近づけるつもりで引く"],
+ "ショルダープレス":["腰を反らさず背もたれに付ける","耳の横を通るように真上へ押す"],
+ "リアデルトフライ":["肩をすくめず、腕を横へ大きく開く","軽めの重さで肩の後ろを感じる"],
+ "アームカール":["肘の位置を動かさない","下ろしきって伸ばしてから次の1回"],
+ "レッグプレス":["膝はつま先と同じ向き","お尻が浮かない深さまで下ろす","膝を伸ばしきってロックしない"],
+ "シーテッドレッグカール":["膝をマシンの回転軸に合わせる","曲げきったところで一瞬止める"],
+ "ヒップスラスト":["あごを引き、腰を反らさずに上げる","上で1秒お尻を締める"],
+ "レッグエクステンション":["膝をマシンの回転軸に合わせる","伸ばしきって太ももの前を締める"],
+ "アブドミナルクランチ":["背中を丸めて、みぞおちを縮める","息を吐きながら縮める"],
+ "ヒップアブダクション":["上体を少し前に倒すとお尻に効きやすい","開いたところで1秒止める"],
+ "ヒップアダクション":["反動を使わず、閉じるときに内ももを締める"]
+};
+var TIPS_ANY=["休憩中に水を一口","次のセットも同じフォーム・同じテンポで"];
+var rest={end:0,ex:"",tip:"",iv:null,buzz:false};
+function restSec(name){var p=exInfo(name).p;return (p==="肩"||p==="腕"||p==="腹・体幹")?75:150;}
+function startRest(name){
+  var l=TIPS[name]||TIPS_ANY;
+  rest.ex=name;rest.end=Date.now()+restSec(name)*1000;rest.tip=l[Math.floor(Math.random()*l.length)];rest.buzz=false;
+  clearInterval(rest.iv);rest.iv=setInterval(drawRest,250);drawRest();
+}
+function stopRest(){clearInterval(rest.iv);rest.iv=null;rest.end=0;drawRest();}
+function drawRest(){
+  var el=document.getElementById("restbar");if(!el) return;
+  if(!rest.end){el.hidden=true;document.body.classList.remove("resting");return;}
+  var left=Math.ceil((rest.end-Date.now())/1000);
+  if(left<=-20){stopRest();return;}
+  if(left<=0&&!rest.buzz){rest.buzz=true;try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
+  if(!el.firstChild) el.innerHTML='<span class="rt" id="rtT"></span><span class="tip"><b id="rtL"></b><span id="rtX"></span></span>'+
+    '<span class="rbtn"><button class="mini" data-act="restAdd" aria-label="休憩を30秒延ばす">+30</button><button class="mini" data-act="restStop" aria-label="休憩を終える">×</button></span>';
+  var s=Math.max(0,left);
+  document.getElementById("rtT").textContent=left>0?Math.floor(s/60)+":"+pad(s%60):"GO";
+  document.getElementById("rtT").className="rt"+(left>0?"":" end");
+  document.getElementById("rtL").textContent=left>0?"休憩中・"+rest.ex:"次のセットへ";
+  document.getElementById("rtX").textContent=rest.tip;
+  el.hidden=false;document.body.classList.add("resting");
+}
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible") drawRest();});
+
 /* ---------- イベント ---------- */
 function rerender(){
   document.querySelectorAll(".tabs button").forEach(function(b){b.setAttribute("aria-current",b.dataset.tab===view?"page":"false");});
@@ -967,7 +1083,7 @@ function rerender(){
 }
 function go(){
   var need=[ensure("settings",defaultSettings)];
-  if(view==="rec") need.push(loadMonth(ymOf(curDate)),loadMonth(addMonths(ymOf(curDate),-1)),loadMonth(addMonths(ymOf(curDate),-2)));
+  if(view==="rec") need=need.concat(allMonthKeys().concat([ymOf(curDate),addMonths(ymOf(curDate),-1),addMonths(ymOf(curDate),-2)]).filter(function(k,i,a){return a.indexOf(k)===i;}).map(loadMonth));
   else if(view==="parts") need.push(loadMonth(statYm),loadMonth(addMonths(statYm,-1)));
   else if(view!=="more") need.push(loadMonth(statYm));
   return Promise.all(need).then(function(){
@@ -986,6 +1102,8 @@ document.querySelector(".tabs").addEventListener("click",function(ev){
 
 function handleAct(b){
   var a=b.dataset.act,i=+b.dataset.i,j=+b.dataset.j,day;
+  if(a==="restAdd"){rest.end=Math.max(rest.end,Date.now())+30000;rest.buzz=false;drawRest();return;}
+  if(a==="restStop"){stopRest();return;}
   if(a==="day"){curDate=addDays(curDate,+b.dataset.n);go();return;}
   if(a==="today"){curDate=today;go();return;}
   if(a==="month"){statYm=addMonths(statYm,+b.dataset.n);go();return;}
@@ -1064,6 +1182,12 @@ app.addEventListener("input",function(ev){
 });
 app.addEventListener("change",function(ev){
   var t=ev.target,f=t.dataset.f;if(!f) return;
+  if(f==="r"){
+    var rd=getDay(curDate,false),re=rd&&rd.entries[+t.dataset.i];
+    if(re&&curDate===today&&t.value!==""&&Number(t.value)>0) startRest(re.ex);
+    if(recSig()!==recShown) sync.repaint();
+    return;
+  }
   if(f==="w"){
     var day=getDay(curDate,true),s=day.entries[+t.dataset.i].sets[+t.dataset.j],v=t.value;
     if(v==="custom"){
