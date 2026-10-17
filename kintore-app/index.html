@@ -382,6 +382,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     var local=docs[n],changed=false;
     if(!remote) return false;
     if(n==="settings"){
+      remote=JSON.parse(JSON.stringify(remote));migrateProgram(remote);migrateProgram(local);
       if(!local||(remote.u||0)>=(local.u||0)&&this.canon(remote)!==this.canon(local)){docs[n]=remote;return true;}
       return false;
     }
@@ -1160,10 +1161,15 @@ function go(){
   else if(view!=="more") need.push(loadMonth(statYm));
   return Promise.all(need).then(function(){
     var st=settings();
-    if(st&&(!st.program||st.program.version!==DEFAULT_PROGRAM.version)){st.program=JSON.parse(JSON.stringify(DEFAULT_PROGRAM));markDirty("settings",true);}
+    if(migrateProgram(st)) markDirty("settings",true);
     if(!sync.busy) planToday();
     rerender();
   });
+}
+/* プログラムの版が古ければ既定に入れ替える。同期で受け取った設定にも使う */
+function migrateProgram(st){
+  if(st&&(!st.program||st.program.version!==DEFAULT_PROGRAM.version)){st.program=JSON.parse(JSON.stringify(DEFAULT_PROGRAM));return true;}
+  return false;
 }
 function defaultSettings(){return {exercises:DEFAULT_EX.map(function(e){return {n:e.n,p:e.p,u:e.u,m:e.m};}),program:JSON.parse(JSON.stringify(DEFAULT_PROGRAM))};}
 
@@ -1377,7 +1383,15 @@ if(window.claude&&typeof window.claude.use==="function"){
   go();
 }else{
   // 単体版：ホーム画面アプリとオフライン表示
-  if("serviceWorker" in navigator&&location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(function(){});
+  if("serviceWorker" in navigator&&location.protocol!=="file:"){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+    // 新しい版が入ったら読み込み直す（ホーム画面アプリは閉じずに戻ると古いままになるため）
+    var hadSW=!!navigator.serviceWorker.controller,reloading=false;
+    navigator.serviceWorker.addEventListener("controllerchange",function(){if(!hadSW||reloading) return;reloading=true;location.reload();});
+    document.addEventListener("visibilitychange",function(){
+      if(document.visibilityState==="visible") navigator.serviceWorker.getRegistration().then(function(r){if(r) r.update();}).catch(function(){});
+    });
+  }
   if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
   sync.busy=sync.on(); // 起動時の同期が終わるまで個別の同期は待つ
   idb.open().then(function(){store.mode="idb";},function(){}).then(go).catch(function(){}).then(function(){
