@@ -396,7 +396,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
       var lw=self.weight(l),rw=self.weight(r);
       if(!lw&&rw) take=true;          // 中身のない日（メニューを入れただけ）で記録を消さない
       else if(lw&&!rw) take=false;
-      else if(!lw&&!rw&&!lu&&!ru) take=true;   // どちらも自動で入れたメニューだけなら共有済みの方
+      else if(!lw&&!rw&&!lu&&!ru) take=(l.pv===r.pv)||r.pv===DEFAULT_PROGRAM.version;   // どちらも自動で入れたメニューだけなら共有済みの方（ただし今のプログラムで作った方を優先）
       else if(lu||ru) take=ru>lu;
       else take=rw>lw;
       if(take&&self.canon(l)!==self.canon(r)){local.days[k]=r;changed=true;}
@@ -957,6 +957,7 @@ function planToday(){
   var keep=curDate,before=cur?sync.canon(cur):null;
   curDate=today;if(m.days) delete m.days[today];
   insertPlan();
+  if(m.days&&m.days[today]) m.days[today].pv=program().version;  // どのプログラムで作ったメニューか
   curDate=keep;
   if(sync.canon(m.days[today])===before) return false;
   markDirty("m-"+ymOf(today));
