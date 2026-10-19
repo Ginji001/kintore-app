@@ -133,6 +133,17 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .bodyfig{margin:0 -10px 24px;text-align:center}
 .bodyfig svg{width:100%;height:auto;max-height:540px}
 .ptitle{font-size:13px;color:var(--mute);margin:0 0 10px}
+.bchart{width:100%;height:auto;display:block;margin:4px 0 6px}
+.bchart .ln{fill:none;stroke:var(--accent);stroke-width:2}
+.bchart .dt{fill:var(--accent)}
+.bchart .gl{stroke:var(--line);stroke-width:1}
+.bchart text{fill:var(--mute);font-size:10px}
+.brow{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.brow .n{flex:1}.brow .v{font-family:"Jost",sans-serif;font-size:17px}.brow .u{color:var(--mute);font-size:12px}
+.brow .df{min-width:52px;text-align:right;color:var(--mute);font-size:12px}
+.bseg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+.bseg button{background:none;border:1px solid var(--line);color:var(--mute);border-radius:14px;padding:4px 10px;font-size:12px}
+.bseg button[aria-pressed="true"]{border-color:var(--accent);color:var(--ink)}
 .prow{padding:10px 0 12px}
 .prow .t{display:flex;align-items:center;gap:10px}
 .prow .sw{width:12px;height:12px;border-radius:2px}
@@ -181,7 +192,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 /* タブ */
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom,0px);z-index:10}
-.tabs .inr{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tabs .inr{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
 .tabs button{background:none;border:none;padding:12px 0 14px;font-size:13px;color:var(--faint);border-top:2px solid transparent;margin-top:-1px}
 .tabs button[aria-current="page"]{color:var(--ink);border-top-color:var(--ink)}
 .status{font-size:12px;color:var(--faint);margin-top:28px}
@@ -220,6 +231,7 @@ body.resting main{padding-bottom:200px}
 <nav class="tabs" aria-label="画面切り替え"><div class="restbar" id="restbar" role="timer" hidden></div><div class="inr">
   <button data-tab="rec">記録</button>
   <button data-tab="cal">カレンダー</button>
+  <button data-tab="body">計測</button>
   <button data-tab="parts">部位</button>
   <button data-tab="ex">種目</button>
   <button data-tab="more">設定</button>
@@ -419,7 +431,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     });
     return changed;
   },
-  weight:function(d){var n=0;(d&&d.entries||[]).forEach(function(e){n+=doneSets(e).length;});return n+(d&&d.note?1:0)+(d&&d.rest?1:0);},
+  weight:function(d){var n=0;(d&&d.entries||[]).forEach(function(e){n+=doneSets(e).length;});return n+(d&&d.note?1:0)+(d&&d.rest?1:0)+(d&&d.m?1:0);},
   isEmpty:function(n){var d=docs[n];if(!d) return true;if(n==="settings") return false;return !d.days||!Object.keys(d.days).some(function(k){return sync.weight(d.days[k])>0;});},
   run:function(n,tries){
     var self=this;tries=tries||0;
@@ -482,8 +494,8 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
       return r.json();
     }).then(function(list){
       var remote={};
-      (Array.isArray(list)?list:[]).forEach(function(f){var m=/^(settings|m-\d{4}-\d{2})\.json$/.exec(f.name||"");if(m) remote[m[1]]=f.sha;});
-      var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
+      (Array.isArray(list)?list:[]).forEach(function(f){var m=/^(settings|body|m-\d{4}-\d{2})\.json$/.exec(f.name||"");if(m) remote[m[1]]=f.sha;});
+      var names=["settings","body"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
       Object.keys(remote).forEach(function(n){if(names.indexOf(n)<0) names.push(n);});
       names.forEach(function(n){self.last[n]=Date.now();});
       return Promise.all(names.map(function(n){return n==="settings"?ensure("settings",defaultSettings):ensure(n,function(){return {days:{}};});})).then(function(){
@@ -817,6 +829,66 @@ function renderParts(){
   app.innerHTML=h;
 }
 
+/* ---------- 計測（ジムの体組成計 TANITA FIT） ----------
+   docs.body = {days:{"YYYY-MM-DD":{t:"時刻",m:{項目},parts:{部位別筋肉量},type:"体型判定",u:更新時刻}}}
+   非公開の同期リポジトリに data/body.json として保存する（公開リポジトリのコードには数値を入れない） */
+var BODY_F=[["w","体重","kg"],["bf","体脂肪率","%"],["mm","筋肉量","kg"],["bmi","BMI",""],["vf","内臓脂肪レベル",""],["bmr","基礎代謝量","kcal"],
+  ["fat","脂肪量","kg"],["ffm","除脂肪量","kg"],["bone","推定骨量","kg"],["tbw","体水分量","kg"],["tbwp","体水分率","%"],["prot","タンパク質量","kg"],
+  ["smi","SMI",""],["age","体内年齢","才"],["ath","アスリート指数","点"],["mq","筋質点数","点"],["leg","脚部筋肉量点数","点"],["pa","フェーズアングル",""]];
+var BODY_CH=["w","bf","mm","vf","bmr","smi"];
+var bodyMetric="w";
+function bodyFmt(v,k){if(v==null||v==="") return "-";return k==="smi"?Number(v).toFixed(2):String(v);}
+function bodyDiff(a,b,k){
+  if(a==null||b==null) return "";
+  var d=Math.round((a-b)*100)/100;if(!d) return "±0";
+  var t=k==="smi"?Math.abs(d).toFixed(2):String(Math.round(Math.abs(d)*10)/10);
+  return (d>0?"+":"−")+t;
+}
+function bodyChart(rows,k){
+  var pts=rows.map(function(r){return {d:r.d,v:r.m[k]};}).filter(function(x){return x.v!=null;});
+  if(pts.length<2) return "";
+  var W=320,H=150,L=34,R=10,T=12,B=22,mn=Infinity,mx=-Infinity;
+  pts.forEach(function(x){mn=Math.min(mn,x.v);mx=Math.max(mx,x.v);});
+  if(mx===mn){mx+=1;mn-=1;}var pad=(mx-mn)*0.15;mn-=pad;mx+=pad;
+  var t0=Date.parse(pts[0].d),t1=Date.parse(pts[pts.length-1].d);if(t1===t0) t1=t0+1;
+  var X=function(d){return L+(Date.parse(d)-t0)/(t1-t0)*(W-L-R);},Y=function(v){return T+(mx-v)/(mx-mn)*(H-T-B);};
+  var g="",i;
+  for(i=0;i<=2;i++){var v=mn+(mx-mn)*i/2,y=Y(v);g+='<line class="gl" x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'"/><text x="'+(L-4)+'" y="'+(y+3)+'" text-anchor="end">'+(Math.round(v*10)/10)+'</text>';}
+  var line=pts.map(function(x){return X(x.d).toFixed(1)+","+Y(x.v).toFixed(1);}).join(" ");
+  var dots=pts.map(function(x){return '<circle class="dt" r="3" cx="'+X(x.d).toFixed(1)+'" cy="'+Y(x.v).toFixed(1)+'"/>';}).join("");
+  var lab='<text x="'+L+'" y="'+(H-6)+'">'+pts[0].d.slice(5).replace("-","/")+'</text><text x="'+(W-R)+'" y="'+(H-6)+'" text-anchor="end">'+pts[pts.length-1].d.slice(5).replace("-","/")+'</text>';
+  return '<svg class="bchart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="推移のグラフ">'+g+'<polyline class="ln" points="'+line+'"/>'+dots+lab+'</svg>';
+}
+function renderBody(){
+  var bd=docs.body||{days:{}},keys=Object.keys(bd.days||{}).filter(function(k){return bd.days[k]&&bd.days[k].m;}).sort();
+  var h='<header class="mhead"><div class="mnum" style="font-size:44px">計測</div></header>';
+  if(!keys.length){app.innerHTML=h+'<div class="empty">ジムの体組成計（TANITA FIT）の測定結果がまだありません。</div>';return;}
+  var rows=keys.map(function(k){return {d:k,m:bd.days[k].m,x:bd.days[k]};});
+  var cur=rows[rows.length-1],prev=rows.length>1?rows[rows.length-2]:null,first=rows[0];
+  h+='<p class="ptitle">最新 '+cur.d.replace(/-/g,"/")+(cur.x.t?" "+esc(cur.x.t):"")+'（'+rows.length+'回目）'+(cur.x.type?'・体型 '+esc(cur.x.type):'')+'</p>';
+  h+='<div class="big3">'+[["w","kg"],["bf","%"],["mm","kg"]].map(function(a){
+    var lb={w:"体重",bf:"体脂肪率",mm:"筋肉量"}[a[0]];
+    return '<div><b>'+bodyFmt(cur.m[a[0]],a[0])+'</b><span>'+lb+'（'+a[1]+'）'+(prev?' '+bodyDiff(cur.m[a[0]],prev.m[a[0]],a[0]):'')+'</span></div>';
+  }).join("")+'</div>';
+  h+='<p class="ptitle">推移</p><div class="bseg" role="group" aria-label="グラフの項目">'+BODY_CH.map(function(k){
+    var f=BODY_F.filter(function(x){return x[0]===k;})[0];
+    return '<button data-act="bmet" data-v="'+k+'" aria-pressed="'+(bodyMetric===k)+'">'+f[1]+'</button>';
+  }).join("")+'</div>'+(bodyChart(rows,bodyMetric)||'<div class="empty">2回以上の測定でグラフが出ます。</div>');
+  h+='<p class="ptitle" style="margin-top:22px">全項目（右は前回比 / 初回比）</p>';
+  BODY_F.forEach(function(f){
+    var v=cur.m[f[0]];if(v==null) return;
+    h+='<div class="brow"><span class="n">'+f[1]+'</span><span class="v">'+bodyFmt(v,f[0])+'</span><span class="u">'+f[2]+'</span><span class="df">'+(prev?bodyDiff(v,prev.m[f[0]],f[0]):"")+'</span><span class="df">'+(rows.length>1?bodyDiff(v,first.m[f[0]],f[0]):"")+'</span></div>';
+  });
+  if(cur.x.parts){var pp=cur.x.parts;
+    h+='<p class="ptitle" style="margin-top:22px">部位別筋肉量（kg）</p><div class="brow"><span class="n">体幹 '+bodyFmt(pp.trunk)+'／左腕 '+bodyFmt(pp.la)+'／右腕 '+bodyFmt(pp.ra)+'／左脚 '+bodyFmt(pp.ll)+'／右脚 '+bodyFmt(pp.rl)+'</span></div>';}
+  h+='<p class="ptitle" style="margin-top:22px">履歴</p>';
+  rows.slice().reverse().forEach(function(r){
+    h+='<div class="brow"><span class="n">'+r.d.replace(/-/g,"/")+'</span><span class="df" style="min-width:0;font-size:13px;color:var(--ink)">'+bodyFmt(r.m.w)+'kg・'+bodyFmt(r.m.bf)+'%・筋肉'+bodyFmt(r.m.mm)+'kg</span></div>';
+  });
+  h+='<p class="note">FIT PLACEの体組成計（TANITA FIT）の測定結果です。記録は同期用の非公開リポジトリにだけ保存されます。</p>';
+  app.innerHTML=h;
+}
+
 /* ---------- 種目別 ---------- */
 function renderEx(){
   var st=monthStats(statYm),n=daysIn(statYm);
@@ -898,7 +970,7 @@ function buildBackup(){
   var keys=allMonthKeys();
   return Promise.all(keys.map(loadMonth)).then(function(){
     var months={};keys.forEach(function(k){var m=docs["m-"+k];if(m&&m.days&&Object.keys(m.days).length) months[k]=m;});
-    return {app:"kintore",version:1,exported:new Date().toISOString(),settings:settings(),months:months};
+    return ensure("body",function(){return {days:{}};}).then(function(bd){var o={app:"kintore",version:1,exported:new Date().toISOString(),settings:settings(),months:months};if(bd&&bd.days&&Object.keys(bd.days).length) o.body=bd;return o;});
   });
 }
 
@@ -1194,6 +1266,7 @@ function rerender(){
   if(view==="rec") renderRec();
   else if(view==="cal") renderCal();
   else if(view==="parts") renderParts();
+  else if(view==="body") renderBody();
   else if(view==="ex") renderEx();
   else renderMore();
 }
@@ -1201,6 +1274,7 @@ function go(){
   var need=[ensure("settings",defaultSettings)];
   if(view==="rec") need=need.concat(allMonthKeys().concat([ymOf(curDate),addMonths(ymOf(curDate),-1),addMonths(ymOf(curDate),-2)]).filter(function(k,i,a){return a.indexOf(k)===i;}).map(loadMonth));
   else if(view==="parts") need.push(loadMonth(statYm),loadMonth(addMonths(statYm,-1)));
+  else if(view==="body") need.push(ensure("body",function(){return {days:{}};}));
   else if(view!=="more") need.push(loadMonth(statYm));
   return Promise.all(need).then(function(){
     var st=settings();
@@ -1233,6 +1307,7 @@ function handleAct(b){
   if(a==="day"){curDate=addDays(curDate,+b.dataset.n);go();return;}
   if(a==="today"){curDate=today;go();return;}
   if(a==="month"){statYm=addMonths(statYm,+b.dataset.n);go();return;}
+  if(a==="bmet"){bodyMetric=b.dataset.v;renderBody();return;}
   if(a==="side"){bodySide=b.dataset.v;rerender();return;}
   if(a==="goDay"){curDate=b.dataset.d;view="rec";window.scrollTo(0,0);go();return;}
   if(a==="openAdd"){openAdd();return;}
@@ -1265,7 +1340,7 @@ function handleAct(b){
   if(a==="syncOff"){if(!confirm("この端末の同期設定（トークン）を消します。記録はこの端末に残ります。よろしいですか？")) return;
     sync.cfg=null;try{localStorage.removeItem("kintore:sync");localStorage.removeItem("kintore:sha");}catch(e){}
     sync.sha={};checkSyncKey();sync.err=null;rerender();return;}
-  if(["showJson","export","import"].indexOf(a)<0) day=getDay(curDate,true);
+  if(a==="bmet") return;if(["showJson","export","import"].indexOf(a)<0) day=getDay(curDate,true);
   if(a==="delEntry"){
     if(!confirm(day.entries[i].ex+"をこの日の記録から削除しますか？")) return;
     day.entries.splice(i,1);saveDay(curDate);renderRec();return;
@@ -1289,6 +1364,7 @@ function handleAct(b){
     if(bk.settings&&bk.settings.exercises){docs.settings=bk.settings;loaded.settings=true;markDirty("settings");}
     var now=Date.now();
     Object.keys(bk.months).forEach(function(k){var mo=bk.months[k];Object.keys(mo.days||{}).forEach(function(d){mo.days[d].u=now;});docs["m-"+k]=mo;loaded["m-"+k]=true;markDirty("m-"+k);});
+    if(bk.body&&bk.body.days){Object.keys(bk.body.days).forEach(function(d){bk.body.days[d].u=now;});docs.body=bk.body;loaded.body=true;markDirty("body");}
     msg.textContent=Object.keys(bk.months).length+"か月分を読み込みました。";
     return;
   }
@@ -1360,7 +1436,7 @@ function connectSync(o,r,t,manual){
     try{localStorage.setItem("kintore:sync",JSON.stringify(sync.cfg));}catch(e){}
     sync.sha={};sync.saveSha();
     syncMsg("接続しました。記録を同期しています…");
-    var names=["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
+    var names=["settings","body"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
     return Promise.all(allMonthKeys().map(loadMonth)).then(function(){
       return names.reduce(function(p,n){return p.then(function(){return sync.doc(n);});},Promise.resolve());
     }).then(function(){sync.busy=false;sync.bootAt=Date.now();setStatus(null);planToday();rerender();syncMsg("同期しました。");return true;});
