@@ -1539,18 +1539,38 @@ var TIPS={
  "ヒップアダクション":["内側（内もも）：脚を閉じる","反動を使わず、閉じるときに内ももを締める"]
 };
 var TIPS_ANY=["休憩中に水を一口","次のセットも同じフォーム・同じテンポで"];
-var rest={end:0,ex:"",tip:"",iv:null,buzz:false};
+var rest={end:0,ex:"",tip:"",iv:null,buzz:false,beep:0};
+/* 残り5秒から毎秒ピッ、0秒で長めのピー（iPhoneは最初に画面を触ったときに音を有効化） */
+var actx=null;
+function audioOn(){
+  try{
+    if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(!AC) return;actx=new AC();}
+    if(actx.state==="suspended") actx.resume();
+    var b=actx.createBuffer(1,1,22050),src=actx.createBufferSource();src.buffer=b;src.connect(actx.destination);src.start(0);
+  }catch(e){}
+}
+["touchend","pointerdown","keydown"].forEach(function(t){document.addEventListener(t,audioOn,{capture:true,passive:true});});
+function beep(long){
+  try{
+    if(!actx) return;if(actx.state==="suspended") actx.resume();
+    var t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain(),d=long?0.8:0.15;
+    o.type="sine";o.frequency.value=long?1320:880;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.6,t+0.01);
+    g.gain.setValueAtTime(0.6,t+d-0.05);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+d+0.02);
+  }catch(e){}
+}
 var REST_DEF={main:150,light:75};
 function restKind(name){var p=exInfo(name).p;return (p==="肩"||p==="腕"||p==="腹・体幹")?"light":"main";}
 function restDef(k){var st=settings(),r=st&&st.rest;var v=r&&Number(r[k]);return v>0?v:REST_DEF[k];}
 function restSec(name){return restDef(restKind(name));}
 function startRest(name){
   var l=TIPS[name]||TIPS_ANY;
-  rest.ex=name;rest.end=Date.now()+restSec(name)*1000;rest.tip=l[Math.floor(Math.random()*l.length)];rest.buzz=false;
+  rest.ex=name;rest.end=Date.now()+restSec(name)*1000;rest.tip=l[Math.floor(Math.random()*l.length)];rest.buzz=false;rest.beep=0;audioOn();
   clearInterval(rest.iv);rest.iv=setInterval(drawRest,250);rest.pop=true;drawRest();
 }
 function stopRest(){clearInterval(rest.iv);rest.iv=null;rest.end=0;rest.pop=false;drawRest();}
-function restAdj(sec){if(!rest.end) return;var now=Date.now();rest.end=Math.max(now+1000,Math.max(rest.end,now)+sec*1000);rest.buzz=false;drawRest();}
+function restAdj(sec){if(!rest.end) return;var now=Date.now();rest.end=Math.max(now+1000,Math.max(rest.end,now)+sec*1000);rest.buzz=false;rest.beep=0;drawRest();}
 function fmtMS(s){return Math.floor(s/60)+":"+pad(s%60);}
 function drawRest(){
   var el=document.getElementById("restbar");if(!el) return;
@@ -1558,7 +1578,8 @@ function drawRest(){
   if(!rest.end){el.hidden=true;if(pp) pp.hidden=true;document.body.classList.remove("resting");return;}
   var left=Math.ceil((rest.end-Date.now())/1000);
   if(left<=-20){stopRest();return;}
-  if(left<=0&&!rest.buzz){rest.buzz=true;try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
+  if(left>0&&left<=5&&left!==rest.beep&&(rest.end-Date.now())>left*1000-600){rest.beep=left;beep(false);}
+  if(left<=0&&!rest.buzz){rest.buzz=true;if(left>-2) beep(true);try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
   if(!el.firstChild) el.innerHTML='<span class="rt" id="rtT" data-act="restOpen"></span><span class="tip" data-act="restOpen"><b id="rtL"></b><span id="rtX"></span></span>'+
     '<span class="rbtn"><button class="mini" data-act="restAdd" aria-label="休憩を30秒延ばす">+30</button><button class="mini" data-act="restStop" aria-label="休憩を終える">×</button></span>';
   var s=Math.max(0,left);
