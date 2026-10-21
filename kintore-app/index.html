@@ -1548,8 +1548,43 @@ function audioOn(){
     if(actx.state==="suspended") actx.resume();
     var b=actx.createBuffer(1,1,22050),src=actx.createBufferSource();src.buffer=b;src.connect(actx.destination);src.start(0);
   }catch(e){}
+  try{var au=auEl();if(!au.dataset.ok&&!trackOn()){au.dataset.ok="1";au.src=makeTrack(50);au.muted=true;var pr=au.play();
+    var un=function(){au.muted=false;};if(pr&&pr.then) pr.then(function(){au.pause();un();},function(){au.dataset.ok="";un();});else{au.pause();un();}}}catch(e){}
 }
 ["touchend","pointerdown","keydown"].forEach(function(t){document.addEventListener(t,audioOn,{capture:true,passive:true});});
+/* 画面を消しても鳴らす：休憩の残り時間ぶんの音声（無音→5秒前から毎秒ピッ→0秒で長めのピー）を作って再生 */
+var restAu=null;
+function auEl(){
+  if(!restAu){restAu=new Audio();restAu.preload="auto";restAu.setAttribute("playsinline","");}
+  return restAu;
+}
+function makeTrack(ms){
+  var R=11025,len=Math.max(1,Math.round(ms/1000*R)),tail=R,n=len+tail,buf=new ArrayBuffer(44+n),v=new DataView(buf),i;
+  function w(o,str){for(var k=0;k<str.length;k++) v.setUint8(o+k,str.charCodeAt(k));}
+  w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,R,true);v.setUint32(28,R,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);
+  var a=new Uint8Array(buf,44);a.fill(128);
+  function tone(at,dur,f){
+    var st=Math.round(at*R),cnt=Math.round(dur*R),fade=Math.round(0.01*R);
+    for(i=0;i<cnt;i++){var x=st+i;if(x<0||x>=n) continue;
+      var env=Math.min(1,i/fade,(cnt-i)/fade);a[x]=128+Math.round(90*env*Math.sin(2*Math.PI*f*i/R));}
+  }
+  var end=len/R;
+  for(var k=5;k>=1;k--){if(end-k>=0) tone(end-k,0.15,880);}
+  tone(end,0.8,1320);
+  return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
+}
+function trackOn(){return !!(restAu&&!restAu.paused&&!restAu.ended);}
+function playTrack(){
+  try{
+    var ms=rest.end-Date.now();if(ms<=300){stopTrack();return;}
+    try{if(navigator.audioSession) navigator.audioSession.type="playback";}catch(e){}
+    var au=auEl(),old=au.src;au.src=makeTrack(ms);if(old&&old.indexOf("blob:")===0) URL.revokeObjectURL(old);
+    if("mediaSession" in navigator&&window.MediaMetadata) navigator.mediaSession.metadata=new MediaMetadata({title:"休憩タイマー",artist:rest.ex||"筋トレ記録"});
+    var pr=au.play();if(pr&&pr.catch) pr.catch(function(){});
+  }catch(e){}
+}
+function stopTrack(){try{if(restAu){restAu.pause();}}catch(e){}}
 function beep(long){
   try{
     if(!actx) return;if(actx.state==="suspended") actx.resume();
@@ -1566,11 +1601,11 @@ function restDef(k){var st=settings(),r=st&&st.rest;var v=r&&Number(r[k]);return
 function restSec(name){return restDef(restKind(name));}
 function startRest(name){
   var l=TIPS[name]||TIPS_ANY;
-  rest.ex=name;rest.end=Date.now()+restSec(name)*1000;rest.tip=l[Math.floor(Math.random()*l.length)];rest.buzz=false;rest.beep=0;audioOn();
+  rest.ex=name;rest.end=Date.now()+restSec(name)*1000;rest.tip=l[Math.floor(Math.random()*l.length)];rest.buzz=false;rest.beep=0;audioOn();playTrack();
   clearInterval(rest.iv);rest.iv=setInterval(drawRest,250);rest.pop=true;drawRest();
 }
-function stopRest(){clearInterval(rest.iv);rest.iv=null;rest.end=0;rest.pop=false;drawRest();}
-function restAdj(sec){if(!rest.end) return;var now=Date.now();rest.end=Math.max(now+1000,Math.max(rest.end,now)+sec*1000);rest.buzz=false;rest.beep=0;drawRest();}
+function stopRest(){stopTrack();clearInterval(rest.iv);rest.iv=null;rest.end=0;rest.pop=false;drawRest();}
+function restAdj(sec){if(!rest.end) return;var now=Date.now();rest.end=Math.max(now+1000,Math.max(rest.end,now)+sec*1000);rest.buzz=false;rest.beep=0;playTrack();drawRest();}
 function fmtMS(s){return Math.floor(s/60)+":"+pad(s%60);}
 function drawRest(){
   var el=document.getElementById("restbar");if(!el) return;
@@ -1578,8 +1613,8 @@ function drawRest(){
   if(!rest.end){el.hidden=true;if(pp) pp.hidden=true;document.body.classList.remove("resting");return;}
   var left=Math.ceil((rest.end-Date.now())/1000);
   if(left<=-20){stopRest();return;}
-  if(left>0&&left<=5&&left!==rest.beep&&(rest.end-Date.now())>left*1000-600){rest.beep=left;beep(false);}
-  if(left<=0&&!rest.buzz){rest.buzz=true;if(left>-2) beep(true);try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
+  if(left>0&&left<=5&&left!==rest.beep&&(rest.end-Date.now())>left*1000-600){rest.beep=left;if(!trackOn()) beep(false);}
+  if(left<=0&&!rest.buzz){rest.buzz=true;if(left>-2&&!trackOn()) beep(true);try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
   if(!el.firstChild) el.innerHTML='<span class="rt" id="rtT" data-act="restOpen"></span><span class="tip" data-act="restOpen"><b id="rtL"></b><span id="rtX"></span></span>'+
     '<span class="rbtn"><button class="mini" data-act="restAdd" aria-label="休憩を30秒延ばす">+30</button><button class="mini" data-act="restStop" aria-label="休憩を終える">×</button></span>';
   var s=Math.max(0,left);
