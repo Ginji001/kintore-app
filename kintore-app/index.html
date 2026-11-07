@@ -144,9 +144,10 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .bseg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
 .bseg button{background:none;border:1px solid var(--line);color:var(--mute);border-radius:14px;padding:4px 10px;font-size:12px}
 .bseg button[aria-pressed="true"]{border-color:var(--accent);color:var(--ink)}
-.bact{display:flex;gap:8px;margin:0 0 18px}
+.bact{display:flex;gap:8px;margin:0 0 18px;align-items:center}
+.bact button{height:36px;line-height:1;white-space:nowrap;display:inline-flex;align-items:center}
 .bact button,.bform .btns button{border:1px solid var(--accent);background:none;color:var(--ink);border-radius:18px;padding:8px 14px;font-size:13px}
-.bact button.sub,.bform .btns button.sub{border-color:var(--line);color:var(--mute)}
+.bact button.sub,.bform .btns button.sub{border-color:var(--line);color:var(--mute);margin:0;font-size:13px}
 .bmsg{font-size:13px;color:var(--accent);margin:-8px 0 14px;min-height:1em}
 .bform{border:1px solid var(--line);border-radius:12px;padding:12px 12px 6px;margin:0 0 22px}
 .bform .g{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
@@ -378,7 +379,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     if(this.err) return "同期できませんでした："+this.err+"（記録はこの端末に保存済み。つながったら自動で送ります）";
     var n=Object.keys(this.pending).length;
     if(n) return "記録はこの端末に保存済み。GitHubへの送信待ちがあります（つながったら自動で送ります）。";
-    return "記録はこの端末とGitHub（"+this.cfg.repo+"・非公開）に保存され、同期を設定した端末どうしで共有されます。"+(this.lastAt?"最終同期 "+this.lastAt:"");
+    return "GitHub同期"+(this.lastAt?"　最終 "+this.lastAt:"");
   },
   api:function(path,opt){
     opt=opt||{};
@@ -538,9 +539,9 @@ var statusMsg=null;
 function setStatus(m){statusMsg=m;var el=document.getElementById("status");if(el) el.textContent=statusText();}
 function statusText(){
   if(statusMsg) return statusMsg;
-  if(store.mode==="db") return "記録はClaudeのアカウントに保存されています（スマホでもPCでも同じ記録）。";
+  if(store.mode==="db") return "Claudeに保存";
   if(sync.on()) return sync.text();
-  return "記録はこの端末に保存されています。機種変更や削除に備えて、設定からバックアップを書き出してください。";
+  return "端末内に保存";
 }
 
 function ensure(n,def){
@@ -648,7 +649,7 @@ function renderRec(){
      '<button class="chip" data-act="rest" aria-pressed="'+!!rest+'">行けなかった</button></div>';
   var entries=(day&&day.entries)||[];
   if(!entries.length){
-    h+='<div class="empty">'+(plan?"この日のメニューをまとめて入れるか、1種目ずつ追加してください。":"休養日です。トレーニングした場合は種目を追加してください。")+"</div>";
+    h+='<div class="empty">'+(plan?"未記録":"休養日")+"</div>";
   }
   entries.forEach(function(e,i){
     var info=exInfo(e.ex),tgt="";
@@ -836,7 +837,7 @@ function renderParts(){
     h+='<div class="prow"><div class="t"><span class="sw" style="background:'+musColor(lv[p])+'"></span><span class="n">'+p+'</span><span class="v">'+v+'</span><span class="df">'+(df>0?"+"+df:df<0?"−"+(-df):"±0")+'</span></div>'+
        '<div class="track"><div class="f" style="width:'+(v/max*100)+'%"></div><div class="p" style="left:'+(b/max*100)+'%"></div></div></div>';
   });
-  h+='<p class="note">筋肉の赤が濃い部位ほど、その月のセット数が多いことを示します。細い縦線は前月のセット数。部位の割り当ては「設定」で変えられます。</p>';
+  h+='<p class="note">色＝セット数　線＝前月</p>';
   app.innerHTML=h;
 }
 
@@ -1100,22 +1101,22 @@ function bodyReadFiles(files){
   files=Array.prototype.slice.call(files);bodyBusy=true;
   if(!bodyDraft) bodyDraft=bodyNewDraft(null);
   var dr=bodyDraft,i=0,pages=[];
-  bodyMsg("読み取りの準備をしています…（初回は数十秒かかります）");
+  bodyMsg("準備中…");
   var next=function(){
     if(i>=files.length){
       bodyBusy=false;
-      dr.note=pages.length?"読み取り："+pages.join("・")+"。数値を写真と見比べて、違っていれば直してから保存してください。":"";
+      dr.note=pages.length?"読取 "+pages.join("・"):"";
       renderBody();return;
     }
     var f=files[i];bodyMsg("読み取り中 "+(i+1)+"/"+files.length+"…");
-    BOCR.read(f,function(m){if(m.status&&/load|initializ/i.test(m.status)) bodyMsg("読み取りの準備中…"+Math.round(m.progress*100)+"%");}).then(function(r){
-      var nm={p1:"全身1",p2:"全身2",parts:"部位別",pa:"フェーズアングル",type:"体型判定"}[r.page];pages.push(nm||"判別できない写真");
+    BOCR.read(f,function(m){if(m.status&&/load|initializ/i.test(m.status)) bodyMsg("準備中 "+Math.round(m.progress*100)+"%");}).then(function(r){
+      var nm={p1:"全身1",p2:"全身2",parts:"部位別",pa:"フェーズアングル",type:"体型判定"}[r.page];pages.push(nm||"判別不可");
       if(r.date&&!dr.edit) dr.date=r.date;
       if(r.time&&!dr.time) dr.time=r.time;
       BODY_F.forEach(function(fd){var k=fd[0];if(r[k]!=null){dr.m[k]=r[k];dr.read[k]=1;}});
       if(r.parts) Object.keys(r.parts).forEach(function(k){dr.parts[k]=r.parts[k];dr.read["p_"+k]=1;});
       if(r.type) dr.type=r.type;
-    },function(e){pages.push("読み取れなかった写真");}).then(function(){i++;next();});
+    },function(e){pages.push("読取失敗");}).then(function(){i++;next();});
   };
   next();
 }
@@ -1127,15 +1128,15 @@ function bodyCollect(){
 }
 function bodySave(){
   bodyCollect();var dr=bodyDraft;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(dr.date)){bodyMsg("日付を入れてください");return;}
-  if(dr.m.w==null){bodyMsg("体重を入れてください");return;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dr.date)){bodyMsg("日付未入力");return;}
+  if(dr.m.w==null){bodyMsg("体重未入力");return;}
   var bad=BODY_F.filter(function(f){var v=dr.m[f[0]];return v!=null&&(isNaN(v)||BOCR.RANGE[f[0]]&&(v<BOCR.RANGE[f[0]][0]||v>BOCR.RANGE[f[0]][1]));}).map(function(f){return f[1];});
   if(bad.length&&!confirm(bad.join("・")+"の値がふつうの範囲から外れています。このまま保存しますか？")) return;
   var ex=docs.body&&docs.body.days&&docs.body.days[dr.date]&&docs.body.days[dr.date].m;
   if(ex&&!(dr.edit&&dr.orig===dr.date)&&!confirm(dr.date.replace(/-/g,"/")+"にはすでに記録があります。上書きしますか？")) return;
   if(!docs.body) docs.body={days:{}};if(!docs.body.days) docs.body.days={};
   var o={m:JSON.parse(JSON.stringify(dr.m)),u:Date.now()};if(dr.time) o.t=dr.time;if(dr.type) o.type=dr.type;if(Object.keys(dr.parts).length) o.parts=JSON.parse(JSON.stringify(dr.parts));
-  docs.body.days[dr.date]=o;if(dr.orig&&dr.orig!==dr.date) docs.body.days[dr.orig]={del:1,u:Date.now()};loaded.body=true;markDirty("body");bodyDraft=null;renderBody();bodyMsg(dr.date.replace(/-/g,"/")+"の計測を保存しました");
+  docs.body.days[dr.date]=o;if(dr.orig&&dr.orig!==dr.date) docs.body.days[dr.orig]={del:1,u:Date.now()};loaded.body=true;markDirty("body");bodyDraft=null;renderBody();bodyMsg(dr.date.replace(/-/g,"/")+" 保存済み");
 }
 function bodyDelete(){
   var dr=bodyDraft,d=dr&&dr.orig;if(!d||!docs.body||!docs.body.days[d]) return;
@@ -1146,15 +1147,15 @@ var BODY_PARTS=[["trunk","体幹"],["la","左腕"],["ra","右腕"],["ll","左脚
 function bodyForm(){
   var dr=bodyDraft,h='<div class="bform">';
   if(dr.note) h+='<p class="hint">'+esc(dr.note)+'</p>';
-  var exd=docs.body&&docs.body.days&&docs.body.days[dr.date]&&docs.body.days[dr.date].m;if(exd&&!dr.edit) h+='<p class="hint" style="color:var(--warn)">'+dr.date.replace(/-/g,"/")+'にはすでに記録があります。写真の日付が違うときは日付を直してください。</p>';
+  var exd=docs.body&&docs.body.days&&docs.body.days[dr.date]&&docs.body.days[dr.date].m;if(exd&&!dr.edit) h+='<p class="hint" style="color:var(--warn)">'+dr.date.replace(/-/g,"/")+' 記録済み</p>';
   h+='<div class="g"><label>日付<input type="date" id="bd_date" value="'+esc(dr.date)+'"></label><label>時刻<input type="time" id="bd_time" value="'+esc(dr.time||"")+'"></label></div>';
-  h+='<p class="ptitle" style="margin:12px 0 6px">測定値（オレンジ枠は読み取れなかった項目）</p><div class="g">';
+  h+='<p class="ptitle" style="margin:12px 0 6px">測定値</p><div class="g">';
   BODY_F.forEach(function(f){var v=dr.m[f[0]],ms=dr.note&&v==null;
     h+='<label>'+f[1]+(f[2]?"（"+f[2]+"）":"")+'<input type="number" step="any" inputmode="decimal" id="bd_'+f[0]+'"'+(ms?' class="miss"':'')+' value="'+(v==null?"":v)+'"></label>';});
   h+='</div><p class="ptitle" style="margin:12px 0 6px">部位別筋肉量（kg）</p><div class="g">';
   BODY_PARTS.forEach(function(p){var v=dr.parts[p[0]];h+='<label>'+p[1]+'<input type="number" step="any" inputmode="decimal" id="bd_p_'+p[0]+'" value="'+(v==null?"":v)+'"></label>';});
   h+='<label>体型判定<select id="bd_type"><option value=""></option>'+["かくれ肥満","肥満型","かた太り","運動不足","標準","筋肉質","やせ型","細身筋肉質"].map(function(t){return '<option'+(dr.type===t?" selected":"")+'>'+t+'</option>';}).join("")+'</select></label></div>';
-  h+='<div class="btns"><button data-act="bsave">保存</button><button class="sub" data-act="bphoto">写真を追加</button><button class="sub" data-act="bcancel">やめる</button>'+(dr.edit?'<button class="sub" data-act="bdel">削除</button>':'')+'</div></div>';
+  h+='<div class="btns"><button data-act="bsave">保存</button><button class="sub" data-act="bphoto">写真追加</button><button class="sub" data-act="bcancel">やめる</button>'+(dr.edit?'<button class="sub" data-act="bdel">削除</button>':'')+'</div></div>';
   return h;
 }
 function bodyFmt(v,k){if(v==null||v==="") return "-";return k==="smi"?Number(v).toFixed(2):String(v);}
@@ -1183,10 +1184,10 @@ function renderBody(){
   var bd=docs.body||{days:{}},keys=Object.keys(bd.days||{}).filter(function(k){return bd.days[k]&&bd.days[k].m;}).sort();
   var h='<header class="mhead"><div class="mnum" style="font-size:44px">計測</div></header>';
   h+='<input type="file" id="bfile" accept="image/*" multiple hidden>';
-  if(!bodyDraft) h+='<div class="bact"><button data-act="bphoto">📷 写真から読み込む</button><button class="sub" data-act="bmanual">手で入力</button></div>';
+  if(!bodyDraft) h+='<div class="bact"><button data-act="bphoto">📷 写真から</button><button class="sub" data-act="bmanual">手入力</button></div>';
   h+='<p class="bmsg" id="bmsg"></p>';
   if(bodyDraft) h+=bodyForm();
-  if(!keys.length){app.innerHTML=h+(bodyDraft?'':'<div class="empty">ジムの体組成計（TANITA FIT）の画面を撮った写真を読み込むと、ここに結果が並びます。</div>');return;}
+  if(!keys.length){app.innerHTML=h+(bodyDraft?'':'<div class="empty">記録なし</div>');return;}
   var rows=keys.map(function(k){return {d:k,m:bd.days[k].m,x:bd.days[k]};});
   var cur=rows[rows.length-1],prev=rows.length>1?rows[rows.length-2]:null,first=rows[0];
   h+='<p class="ptitle">最新 '+cur.d.replace(/-/g,"/")+(cur.x.t?" "+esc(cur.x.t):"")+'（'+rows.length+'回目）'+(cur.x.type?'・体型 '+esc(cur.x.type):'')+'</p>';
@@ -1197,8 +1198,8 @@ function renderBody(){
   h+='<p class="ptitle">推移</p><div class="bseg" role="group" aria-label="グラフの項目">'+BODY_CH.map(function(k){
     var f=BODY_F.filter(function(x){return x[0]===k;})[0];
     return '<button data-act="bmet" data-v="'+k+'" aria-pressed="'+(bodyMetric===k)+'">'+f[1]+'</button>';
-  }).join("")+'</div>'+(bodyChart(rows,bodyMetric)||'<div class="empty">2回以上の測定でグラフが出ます。</div>');
-  h+='<p class="ptitle" style="margin-top:22px">全項目（右は前回比 / 初回比）</p>';
+  }).join("")+'</div>'+(bodyChart(rows,bodyMetric)||'<div class="empty">2回目から表示</div>');
+  h+='<p class="ptitle" style="margin-top:22px">全項目（前回／初回）</p>';
   BODY_F.forEach(function(f){
     var v=cur.m[f[0]];if(v==null) return;
     h+='<div class="brow"><span class="n">'+f[1]+'</span><span class="v">'+bodyFmt(v,f[0])+'</span><span class="u">'+f[2]+'</span><span class="df">'+(prev?bodyDiff(v,prev.m[f[0]],f[0]):"")+'</span><span class="df">'+(rows.length>1?bodyDiff(v,first.m[f[0]],f[0]):"")+'</span></div>';
@@ -1209,7 +1210,6 @@ function renderBody(){
   rows.slice().reverse().forEach(function(r){
     h+='<div class="brow" data-act="bedit" data-d="'+r.d+'" style="cursor:pointer"><span class="n">'+r.d.replace(/-/g,"/")+'</span><span class="df" style="min-width:0;font-size:13px;color:var(--ink)">'+bodyFmt(r.m.w)+'kg・'+bodyFmt(r.m.bf)+'%・筋肉'+bodyFmt(r.m.mm)+'kg</span></div>';
   });
-  h+='<p class="note">FIT PLACEの体組成計（TANITA FIT）の測定結果です。画面の写真（全身1・全身2・部位別・フェーズアングル）をまとめて選ぶと読み取ります。履歴の日付を押すと直せます。記録は同期用の非公開リポジトリにだけ保存されます。</p>';
   app.innerHTML=h;
 }
 
@@ -1221,7 +1221,7 @@ function renderEx(){
     var items=Object.keys(st.ex).map(function(k){return st.ex[k];}).filter(function(x){return x.part===p;}).sort(function(a,b){return b.sets-a.sets;});
     return {p:p,items:items,sets:items.reduce(function(s,x){return s+x.sets;},0)};
   }).filter(function(g){return g.items.length;}).sort(function(a,b){return b.sets-a.sets;});
-  if(!groups.length) h+='<div class="empty">この月の記録はまだありません。「記録」タブから入力すると、ここに種目ごとの実施日とセット数が並びます。</div>';
+  if(!groups.length) h+='<div class="empty">記録なし</div>';
   groups.forEach(function(g){
     h+='<div class="grp"><h3>'+g.p+"<small>"+g.items.length+"種目・"+g.sets+"セット</small></h3>";
     g.items.forEach(function(x){
@@ -1242,21 +1242,20 @@ function renderMore(){
   h+='<section class="sec"><h2>保存先</h2><p id="status">'+esc(statusText())+"</p></section>";
   if(store.mode!=="db"){
     var c=sync.cfg||{};
-    h+='<section class="sec"><h2>端末間の同期（GitHub）</h2>';
+    h+='<section class="sec"><h2>同期（GitHub）</h2>';
     if(sync.on()){
-      h+='<p>'+esc(c.owner+"/"+c.repo)+' と同期しています。ほかの端末でも同じリポジトリとトークンを設定すると、同じ記録になります。</p>'+
-         '<div class="actions" style="margin:0"><button class="btn solid" data-act="syncNow">今すぐ同期</button><button class="btn" data-act="syncOff">この端末の同期をやめる</button></div>'+
-         '<details style="margin-top:16px"'+(sync.keyOut?' open':'')+'><summary style="cursor:pointer;font-size:15px;font-weight:600">合言葉を作り直す</summary><p>合言葉を決めると、この端末の同期設定を暗号化した内容を作ります。それを公開サイトに置くと、ほかの端末は合言葉を1回入れるだけでつながります。</p>'+
-         '<label class="lbl" for="kp1">合言葉（12文字以上）</label><input id="kp1" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
-         '<label class="lbl" for="kp2">合言葉（確認）</label><input id="kp2" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
-         '<div class="actions"><button class="btn" data-act="keyMake">暗号化した内容を作る</button></div>'+
-         (sync.keyOut?'<p>できました。下の内容を公開サイトの sync-key.json として置くと、ほかの端末は合言葉だけでつながります。合言葉は忘れないよう控えてください。</p>'+
+      h+='<p>'+esc(c.owner+"/"+c.repo)+'</p>'+
+         '<div class="actions" style="margin:0"><button class="btn solid" data-act="syncNow">今すぐ同期</button><button class="btn" data-act="syncOff">同期解除</button></div>'+
+         '<details style="margin-top:16px"'+(sync.keyOut?' open':'')+'><summary style="cursor:pointer;font-size:15px;font-weight:600">合言葉を作り直す</summary>'+
+         '<label class="lbl" for="kp1">合言葉</label><input id="kp1" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
+         '<label class="lbl" for="kp2">合言葉（再入力）</label><input id="kp2" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false">'+
+         '<div class="actions"><button class="btn" data-act="keyMake">作成</button></div>'+
+         (sync.keyOut?'<p>sync-key.json 用</p>'+
          '<div class="actions"><button class="btn solid" data-act="keyCopy">コピーする</button></div>'+
          '<textarea id="keyOut" readonly style="width:100%;box-sizing:border-box;height:90px;font-size:12px">'+esc(sync.keyOut)+'</textarea>':'')+'</details>';
     }else{
       if(sync.keyBlob) h+=keyJoinHtml();
-      h+='<p>記録用の<b>非公開</b>リポジトリと、そのリポジトリだけに使えるトークンを入れると、どの端末でも同じ記録になります。トークンはこの端末の中だけに保存されます。</p>'+
-         '<label class="lbl" for="syOwner">GitHubのユーザー名</label><input id="syOwner" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.owner||"")+'" placeholder="例：Ginji001">'+
+      h+='<label class="lbl" for="syOwner">ユーザー名</label><input id="syOwner" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.owner||"")+'" placeholder="例：Ginji001">'+
          '<label class="lbl" for="syRepo">リポジトリ名</label><input id="syRepo" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.repo||"")+'" placeholder="例：kintore-data">'+
          '<label class="lbl" for="syToken">トークン</label><input id="syToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">'+
          '<div class="actions"><button class="btn solid" data-act="syncConnect">接続する</button></div>'+
@@ -1269,19 +1268,19 @@ function renderMore(){
     for(var j=0;j<60;j+=5) o2+='<option value="'+j+'"'+(j===sc?" selected":"")+'>'+j+'秒</option>';
     if(sc%5) o2+='<option value="'+sc+'" selected>'+sc+'秒</option>';
     return '<span>'+lb+'</span><select data-f="rsm" data-k="'+k+'" aria-label="'+lb+'の分">'+o1+'</select><select data-f="rss" data-k="'+k+'" aria-label="'+lb+'の秒">'+o2+'</select>';};
-  h+='<section class="sec"><h2>休憩タイマー</h2><p>セットの回数を入れると、休憩タイマーが別窓で開きます。最初の時間をここで決めます。</p><div class="rsedit">'+
+  h+='<section class="sec"><h2>休憩タイマー</h2><div class="rsedit">'+
      rsRow("main","主要種目")+rsRow("light","肩・腕・腹")+'</div></section>';
-  h+='<section class="sec"><h2>種目と部位</h2><p>部位別の集計に使います。単位が「秒」の種目は秒数で記録します。</p><div class="scroll"><div class="exedit">';
+  h+='<section class="sec"><h2>種目と部位</h2><div class="scroll"><div class="exedit">';
   exList().forEach(function(e,i){
     h+="<span>"+esc(e.n)+'</span><select data-f="exp" data-i="'+i+'" aria-label="'+esc(e.n)+'の部位">'+PARTS.map(function(p){return "<option"+(p===e.p?" selected":"")+">"+p+"</option>";}).join("")+'</select>'+
        '<select data-f="exu" data-i="'+i+'" aria-label="'+esc(e.n)+'の単位">'+UNITS.map(function(u){return "<option"+(u===e.u?" selected":"")+">"+u+"</option>";}).join("")+"</select>";
   });
   h+="</div></div></section>";
-  h+='<section class="sec"><h2>バックアップ</h2><p>全期間の記録をJSONで書き出せます。ライフログへの集約にも使えます。</p><div class="actions" style="margin:0">'+
-     (downloadsCap||!window.claude?'<button class="btn" data-act="export">ファイルに書き出す</button>':"")+'<button class="btn" data-act="showJson">JSONを表示</button></div>'+
+  h+='<section class="sec"><h2>バックアップ</h2><div class="actions" style="margin:0">'+
+     (downloadsCap||!window.claude?'<button class="btn" data-act="export">書き出し</button>':"")+'<button class="btn" data-act="showJson">JSON表示</button></div>'+
      '<textarea id="json" style="display:none;margin-top:10px;min-height:160px;font-family:Jost,monospace;font-size:12px" aria-label="バックアップJSON"></textarea>'+
      '<label class="lbl" for="impFile">バックアップから戻す</label><input type="file" id="impFile" data-f="file" accept=".json,application/json" style="font-size:13px;color:var(--mute)">'+
-     '<label class="lbl" for="imp">またはJSONを貼り付け</label><textarea id="imp" placeholder="{&quot;months&quot;: …}"></textarea>'+
+     '<label class="lbl" for="imp">JSON貼り付け</label><textarea id="imp" placeholder="{&quot;months&quot;: …}"></textarea>'+
      '<div class="actions"><button class="btn" data-act="import">読み込む</button></div><p id="impmsg"></p></section>';
   app.innerHTML=h;
 }
@@ -1719,8 +1718,8 @@ function handleAct(b){
   if(a==="syncConnect"){syncConnect();return;}
   if(a==="keyJoin"){joinWithKey();return;}
   if(a==="keyMake"){makeKey();return;}
-  if(a==="keyCopy"){var kt=sync.keyOut||"";(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(kt):Promise.reject()).then(function(){syncMsg("コピーしました。Claudeのチャットに貼り付けてください。");},function(){var t=document.getElementById("keyOut");if(t){t.removeAttribute("readonly");t.focus();t.setSelectionRange(0,kt.length);}syncMsg("自動でコピーできませんでした。枠の中の文字を選んでコピーしてください。");});return;}
-  if(a==="syncNow"){var sm=document.getElementById("syncmsg");if(sm) sm.textContent="同期しています…";
+  if(a==="keyCopy"){var kt=sync.keyOut||"";(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(kt):Promise.reject()).then(function(){syncMsg("コピー済み");},function(){var t=document.getElementById("keyOut");if(t){t.removeAttribute("readonly");t.focus();t.setSelectionRange(0,kt.length);}syncMsg("コピー失敗");});return;}
+  if(a==="syncNow"){var sm=document.getElementById("syncmsg");if(sm) sm.textContent="同期中…";
     Promise.all(allMonthKeys().map(loadMonth)).then(function(){return Promise.all(["settings"].concat(allMonthKeys().map(function(k){return "m-"+k;})).map(function(n){return sync.doc(n).catch(function(e){return e;});}));})
     .then(function(r){var bad=r.filter(function(x){return x instanceof Error;});var m=document.getElementById("syncmsg");if(m) m.textContent=bad.length?"一部同期できませんでした："+bad[0].message:"同期しました。";});return;}
   if(a==="syncOff"){if(!confirm("この端末の同期設定（トークン）を消します。記録はこの端末に残ります。よろしいですか？")) return;
@@ -1801,19 +1800,19 @@ app.addEventListener("change",function(ev){
 });
 
 function keyJoinHtml(){
-  return '<h2>ほかの端末と同期する</h2><p>合言葉を入れると、ほかの端末と同じ記録につながります（この端末で1回だけ）。</p>'+
+  return ''+
     '<label class="lbl" for="kpJoin">合言葉</label><input id="kpJoin" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">'+
     '<div class="actions"><button class="btn solid" data-act="keyJoin">つなぐ</button></div>';
 }
 function syncMsg(t){var m=document.getElementById("syncmsg");if(m) m.textContent=t;}
 function syncConnect(){
   var o=document.getElementById("syOwner").value.trim(),r=document.getElementById("syRepo").value.trim(),t=document.getElementById("syToken").value.trim();
-  if(!o||!r||!t){syncMsg("ユーザー名・リポジトリ名・トークンをすべて入れてください。");return;}
+  if(!o||!r||!t){syncMsg("未入力あり");return;}
   connectSync(o,r,t,true);
 }
 /* 接続して全月を同期。成功したらブラウザのパスワード管理に保存し、同じアカウントのほかの端末で自動接続できるようにする */
 function connectSync(o,r,t,manual){
-  var prev=sync.cfg;sync.cfg={owner:o,repo:r,token:t};syncMsg("確認しています…");
+  var prev=sync.cfg;sync.cfg={owner:o,repo:r,token:t};syncMsg("確認中…");
   if(!manual){sync.busy=true;setStatus(null);}
   return sync.api("").then(function(res){
     if(!res.ok) throw sync.httpErr(res.status);
@@ -1822,11 +1821,11 @@ function connectSync(o,r,t,manual){
     if(!info.private) throw new Error("このリポジトリは公開されています。記録は非公開リポジトリにだけ保存します");
     try{localStorage.setItem("kintore:sync",JSON.stringify(sync.cfg));}catch(e){}
     sync.sha={};sync.saveSha();
-    syncMsg("接続しました。記録を同期しています…");
+    syncMsg("接続済み・同期中…");
     var names=["settings","body"].concat(allMonthKeys().map(function(k){return "m-"+k;}));
     return Promise.all(allMonthKeys().map(loadMonth)).then(function(){
       return names.reduce(function(p,n){return p.then(function(){return sync.doc(n);});},Promise.resolve());
-    }).then(function(){sync.busy=false;sync.bootAt=Date.now();setStatus(null);planToday();rerender();syncMsg("同期しました。");return true;});
+    }).then(function(){sync.busy=false;sync.bootAt=Date.now();setStatus(null);planToday();rerender();syncMsg("同期済み");return true;});
   }).catch(function(e){
     sync.busy=false;
     if(!localStorage.getItem("kintore:sync")) sync.cfg=prev;
@@ -1865,8 +1864,8 @@ function checkSyncKey(){
 }
 function joinWithKey(){
   var el=document.getElementById("kpJoin"),pass=el?el.value:"";
-  if(!pass){syncMsg("合言葉を入れてください。");return;}
-  syncMsg("合言葉を確かめています…");
+  if(!pass){syncMsg("合言葉未入力");return;}
+  syncMsg("確認中…");
   unlockCfg(sync.keyBlob,pass).then(function(c){
     if(!c||!c.owner||!c.repo||!c.token) throw new Error("合言葉ファイルの中身が正しくありません");
     return connectSync(c.owner,c.repo,c.token,false);
@@ -1874,9 +1873,9 @@ function joinWithKey(){
 }
 function makeKey(){
   var p1=(document.getElementById("kp1")||{}).value||"",p2=(document.getElementById("kp2")||{}).value||"";
-  if(p1.length<12){syncMsg("合言葉は12文字以上にしてください（公開サイトに置くため、推測されにくいものに）。");return;}
-  if(p1!==p2){syncMsg("2回入れた合言葉が一致しません。");return;}
-  syncMsg("暗号化しています…");
+  if(p1.length<12){syncMsg("12文字以上");return;}
+  if(p1!==p2){syncMsg("不一致");return;}
+  syncMsg("暗号化中…");
   lockCfg(p1).then(function(j){
     sync.keyOut=JSON.stringify(j);rerender();
     var t=document.getElementById("keyOut");if(t) t.select();
