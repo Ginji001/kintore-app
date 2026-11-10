@@ -1548,7 +1548,7 @@ var TIPS={
 };
 var TIPS_ANY=["休憩中に水を一口","次のセットも同じフォーム・同じテンポで"];
 var rest={end:0,ex:"",tip:"",iv:null,buzz:false,beep:0};
-/* 残り5秒から毎秒ピッ、0秒で長めのピー（iPhoneは最初に画面を触ったときに音を有効化） */
+/* 残り5秒から毎秒ピッピ、0秒で長めのピー（iPhoneは最初に画面を触ったときに音を有効化） */
 var actx=null;
 function audioOn(){
   try{
@@ -1578,7 +1578,7 @@ function makeTrack(ms){
       var env=Math.min(1,i/fade,(cnt-i)/fade);a[x]=128+Math.round(90*env*Math.sin(2*Math.PI*f*i/R));}
   }
   var end=len/R;
-  for(var k=5;k>=1;k--){if(end-k>=0) tone(end-k,0.15,880);}
+  for(var k=5;k>=1;k--){if(end-k>=0){tone(end-k,0.08,880);tone(end-k+0.14,0.08,880);}}
   tone(end,0.8,1320);
   return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
 }
@@ -1596,11 +1596,12 @@ function stopTrack(){try{if(restAu){restAu.pause();}}catch(e){}}
 function beep(long){
   try{
     if(!actx) return;if(actx.state==="suspended") actx.resume();
-    var t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain(),d=long?0.8:0.15;
-    o.type="sine";o.frequency.value=long?1320:880;
-    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.6,t+0.01);
-    g.gain.setValueAtTime(0.6,t+d-0.05);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
-    o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+d+0.02);
+    var t0=actx.currentTime;
+    function one(t,d,f){var o=actx.createOscillator(),g=actx.createGain();o.type="sine";o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.6,t+0.01);
+      g.gain.setValueAtTime(0.6,t+d-0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+      o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+d+0.02);}
+    if(long) one(t0,0.8,1320); else {one(t0,0.08,880);one(t0+0.14,0.08,880);}
   }catch(e){}
 }
 var REST_DEF={main:150,light:75};
