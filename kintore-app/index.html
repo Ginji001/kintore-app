@@ -1556,8 +1556,6 @@ function audioOn(){
     if(actx.state==="suspended") actx.resume();
     var b=actx.createBuffer(1,1,22050),src=actx.createBufferSource();src.buffer=b;src.connect(actx.destination);src.start(0);
   }catch(e){}
-  try{var au=auEl();if(!au.dataset.ok&&!trackOn()){au.dataset.ok="1";au.src=makeTrack(50);au.muted=true;var pr=au.play();
-    var un=function(){au.muted=false;};if(pr&&pr.then) pr.then(function(){au.pause();un();},function(){au.dataset.ok="";un();});else{au.pause();un();}}}catch(e){}
 }
 ["touchend","pointerdown","keydown"].forEach(function(t){document.addEventListener(t,audioOn,{capture:true,passive:true});});
 /* 画面を消しても鳴らす：休憩の残り時間ぶんの音声（無音→5秒前から毎秒ピッ→0秒で長めのピー）を作って再生 */
@@ -1583,15 +1581,8 @@ function makeTrack(ms){
   return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
 }
 function trackOn(){return !!(restAu&&!restAu.paused&&!restAu.ended);}
-function playTrack(){
-  try{
-    var ms=rest.end-Date.now();if(ms<=300){stopTrack();return;}
-    try{if(navigator.audioSession) navigator.audioSession.type="playback";}catch(e){}
-    var au=auEl(),old=au.src;au.src=makeTrack(ms);if(old&&old.indexOf("blob:")===0) URL.revokeObjectURL(old);
-    if("mediaSession" in navigator&&window.MediaMetadata) navigator.mediaSession.metadata=new MediaMetadata({title:"休憩タイマー",artist:rest.ex||"筋トレ記録"});
-    var pr=au.play();if(pr&&pr.catch) pr.catch(function(){});
-  }catch(e){}
-}
+/* ロック画面の再生表示を出さないため、音声ファイルの再生はしない（2026-11-10、v40）。音は画面がついているときのWeb Audioのみ */
+function playTrack(){}
 function stopTrack(){try{if(restAu){restAu.pause();}}catch(e){}}
 function beep(long){
   try{
