@@ -643,6 +643,7 @@ function renderRec(){
   if(plan) ph.push("<b>"+esc(plan.label)+"</b>"); else ph.push("<b>休養日</b>");
   if(wi) ph.push(esc(wi.text)+(wi.phase?"："+esc(wi.phase):""));
   h+='<p class="phase">'+ph.join("　")+"</p>";
+  if(day&&day.t0) h+='<p class="target" style="margin:-8px 0 16px">総合タイム <b id="totT">'+totText(day)+'</b></p>';
   if(HK_ON&&day&&day.hk) h+='<p class="target" style="margin:-8px 0 16px">'+esc(hkText(day.hk))+"</p>";
   var run=day&&day.run,rest=day&&day.rest;
   h+='<div class="toggles">'+(SHOW_RUN?'<button class="chip" data-act="run" aria-pressed="'+!!run+'">🏃 ラン</button>':"")+
@@ -1431,6 +1432,13 @@ function prList(day){
     var pb=bestBefore(e.ex,curDate),nb=bestOf(e.ex,[e]);return !!pb&&better(e.ex,nb,pb);
   });
 }
+/* 総合タイム：1セット目の記録から最後のセットの記録まで（記録中は今まで） */
+function fmtDur(ms){var s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);s%=60;return h?h+":"+pad(m)+":"+pad(s):m+":"+pad(s);}
+function totText(day){if(!day||!day.t0) return "";var live=curDate===today&&!dayDone(day);return fmtDur((live?Date.now():(day.t1||day.t0))-day.t0);}
+setInterval(function(){
+  var el=document.getElementById("totT");if(el){var t=totText(getDay(curDate,false));if(el.textContent!==t) el.textContent=t;}
+  var pt=document.getElementById("ppTot");if(pt){var d=getDay(today,false);pt.textContent=d&&d.t0?"総合タイム "+fmtDur(Date.now()-d.t0):"";}
+},1000);
 function doneHtml(day){
   if(!dayDone(day)) return "";
   var sets=0,vol=0,pv=0,hasPrev=true;
@@ -1439,6 +1447,7 @@ function doneHtml(day){
     if(v){var l=findLast(e.ex,curDate,true);if(l) pv+=volOf(e.ex,doneSets(l.entry)); else hasPrev=false;}
   });
   var t="<b>完了</b>　"+day.entries.length+"種目・"+sets+"セット";
+  if(day.t0&&day.t1&&day.t1>day.t0) t+="・総合タイム "+fmtDur(day.t1-day.t0);
   if(vol) t+="・総挙上量 "+vol.toLocaleString()+"kg";
   if(vol&&hasPrev&&pv){var df=vol-pv;t+="（前回比 "+(df>0?"+":df<0?"−":"±")+Math.abs(df).toLocaleString()+"kg）";}
   var prs=prList(day);
@@ -1447,7 +1456,7 @@ function doneHtml(day){
 }
 function recSig(){
   var day=getDay(curDate,false);if(!day) return "";
-  return (dayDone(day)?"1":"0")+prList(day).map(function(e){var b=bestOf(e.ex,[e]);return e.ex+b.w+"x"+b.r;}).join("|");
+  return (day.t0?"t":"")+(dayDone(day)?"1":"0")+prList(day).map(function(e){var b=bestOf(e.ex,[e]);return e.ex+b.w+"x"+b.r;}).join("|");
 }
 
 /* ---------- ヘルスケア連携（iPhoneのショートカット「筋トレ連携」経由） ----------
@@ -1624,7 +1633,7 @@ function drawRest(){
   el.hidden=!!rest.pop;document.body.classList.toggle("resting",!rest.pop);
   if(pp){
     var cd=document.getElementById("restcard");
-    if(!cd.firstChild) cd.innerHTML='<p class="pl" id="ppL"></p><div class="pt" id="ppT" role="timer" aria-live="off"></div><p class="px" id="ppX"></p>'+
+    if(!cd.firstChild) cd.innerHTML='<p class="pl" id="ppL"></p><div class="pt" id="ppT" role="timer" aria-live="off"></div><p class="px" id="ppX"></p><p class="pl" id="ppTot" style="margin:-8px 0 12px"></p>'+
       '<div class="adj"><div><span>分</span><button data-act="restAdj" data-n="-60" aria-label="1分減らす">−</button><button data-act="restAdj" data-n="60" aria-label="1分増やす">＋</button></div>'+
       '<div><span>秒</span><button data-act="restAdj" data-n="-10" aria-label="10秒減らす">−10</button><button data-act="restAdj" data-n="10" aria-label="10秒増やす">＋10</button></div></div>'+
       '<div class="pa"><button class="btn" data-act="restMin">小さくする</button><button class="btn solid" data-act="restStop">終了</button></div>';
