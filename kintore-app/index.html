@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#2a2a2a;--panel:#323232;--line:#3c3c3c;--ink:#ecebe7;--mute:#9b9994;--faint:#5e5d5a;
@@ -47,9 +47,9 @@
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%;overflow:hidden;overscroll-behavior:none}
 body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:var(--bg);color:var(--ink);
-  font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Hiragino Sans",system-ui,sans-serif;
   font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
-.num,.mnum,.bigdate,.stat b,.prow .v{font-family:"Jost","Futura","Avenir Next",system-ui,sans-serif}
+.num,.mnum,.bigdate,.stat b,.prow .v{font-family:"Inter",system-ui,sans-serif;font-variant-numeric:tabular-nums}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -58,7 +58,7 @@ main{max-width:520px;margin:0 auto;padding:28px 22px 40px;padding-bottom:max(16p
 /* 月ヘッダー */
 .mhead{display:flex;align-items:flex-start;gap:18px;margin-bottom:26px}
 .mnum{font-size:84px;font-weight:300;line-height:.86;letter-spacing:-.02em}
-.mname{white-space:nowrap;font-family:"Jost",system-ui,sans-serif;font-size:12px;letter-spacing:.26em;color:var(--mute);margin-top:6px;font-weight:500}
+.mname{white-space:nowrap;font-family:"Inter",system-ui,sans-serif;font-size:12px;letter-spacing:.26em;color:var(--mute);margin-top:6px;font-weight:500}
 .mnav{margin-left:auto;display:flex;gap:4px}
 .nav{background:none;border:1px solid var(--line);border-radius:999px;width:38px;height:38px;color:var(--mute);font-size:18px;line-height:1}
 .nav:hover{color:var(--ink)}
@@ -84,9 +84,9 @@ main{max-width:520px;margin:0 auto;padding:28px 22px 40px;padding-bottom:max(16p
 .x:hover{color:var(--warn)}
 .target{font-size:12.5px;color:var(--mute);margin:2px 0 10px}
 .sets{display:grid;grid-template-columns:20px 1fr 1fr 28px;gap:6px 10px;align-items:center}
-.sets .sn{font-family:"Jost",sans-serif;color:var(--faint);font-size:13px;text-align:right}
+.sets .sn{font-family:"Inter",sans-serif;color:var(--faint);font-size:13px;text-align:right}
 .sets select,.sets input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px}
-.sets input{font-family:"Jost",sans-serif}
+.sets input{font-family:"Inter",sans-serif}
 .unit{position:relative}
 .unit input{padding-right:46px}
 .unit i{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-style:normal;font-size:12px;color:var(--mute);pointer-events:none}
@@ -109,12 +109,12 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .stat b{font-size:28px;font-weight:500;color:var(--ink)}
 .sub{color:var(--mute);font-size:14px;margin:8px 0 26px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid var(--line);border-top:1px solid var(--line)}
-.cal .h{font-family:"Jost",sans-serif;font-size:11px;letter-spacing:.18em;color:var(--mute);text-align:center;padding:0 0 10px;border:none;font-weight:500}
+.cal .h{font-family:"Inter",sans-serif;font-size:11px;letter-spacing:.18em;color:var(--mute);text-align:center;padding:0 0 10px;border:none;font-weight:500}
 .calhead{display:grid;grid-template-columns:repeat(7,1fr)}
 .calhead .sun{color:var(--accent)}
 .cell{aspect-ratio:1/1.2;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:none;border-top:none;border-left:none;
   display:flex;flex-direction:column;align-items:center;padding:6px 2px;gap:4px}
-.cell .d{font-family:"Jost",sans-serif;font-size:14px;color:var(--faint)}
+.cell .d{font-family:"Inter",sans-serif;font-size:14px;color:var(--faint)}
 .cell.on .d{color:var(--ink)}
 .cell.out .d{color:var(--line)}
 .cell.today{box-shadow:inset 0 0 0 1px var(--accent)}
@@ -125,7 +125,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 /* 部位 */
 .big3{display:flex;gap:30px;margin:-4px 0 28px}
 .big3 div{display:flex;flex-direction:column}
-.big3 b{font-family:"Jost",sans-serif;font-size:52px;font-weight:300;line-height:1}
+.big3 b{font-family:"Inter",sans-serif;font-size:52px;font-weight:300;line-height:1}
 .big3 span{font-size:12px;color:var(--mute);margin-top:8px}
 .seg{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;width:max-content;margin:0 auto 10px;padding:2px}
 .seg button{background:none;border:none;border-radius:999px;padding:5px 18px;font-size:13px;color:var(--mute)}
@@ -139,7 +139,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .bchart .gl{stroke:var(--line);stroke-width:1}
 .bchart text{fill:var(--mute);font-size:10px}
 .brow{display:flex;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
-.brow .n{flex:1}.brow .v{font-family:"Jost",sans-serif;font-size:17px}.brow .u{color:var(--mute);font-size:12px}
+.brow .n{flex:1}.brow .v{font-family:"Inter",sans-serif;font-size:17px}.brow .u{color:var(--mute);font-size:12px}
 .brow .df{min-width:52px;text-align:right;color:var(--mute);font-size:12px}
 .bseg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
 .bseg button{background:none;border:1px solid var(--line);color:var(--mute);border-radius:14px;padding:4px 10px;font-size:12px}
@@ -161,7 +161,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .prow .sw{width:12px;height:12px;border-radius:2px}
 .prow .n{font-size:17px}
 .prow .v{margin-left:auto;font-size:20px}
-.prow .df{width:44px;text-align:right;font-family:"Jost",sans-serif;font-size:13px;color:var(--faint)}
+.prow .df{width:44px;text-align:right;font-family:"Inter",sans-serif;font-size:13px;color:var(--faint)}
 .track{position:relative;height:5px;background:var(--line);border-radius:3px;margin-top:8px}
 .track .f{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#e7b9b1,#b3202c);border-radius:3px}
 .track .p{position:absolute;top:-4px;bottom:-4px;width:1.5px;background:var(--mute)}
@@ -174,11 +174,11 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .exr{border-top:1px solid var(--line);padding:12px 0;display:grid;grid-template-columns:1fr auto;gap:2px 12px}
 .exr .en{font-size:16px}
 .exr .ed{text-align:right;font-size:13px;color:var(--mute)}
-.exr .ed b{font-family:"Jost",sans-serif;color:var(--ink);font-weight:500}
+.exr .ed b{font-family:"Inter",sans-serif;color:var(--ink);font-weight:500}
 .exr .dots{display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow:hidden}
 .exr .dots i{width:9px;height:9px;border-radius:1.5px;background:var(--line);flex:none}
 .exr .dots i.on{background:var(--hi)}
-.exr .sp{text-align:right;font-family:"Jost",sans-serif;font-size:14px;font-weight:500}
+.exr .sp{text-align:right;font-family:"Inter",sans-serif;font-size:14px;font-weight:500}
 
 /* その他 */
 .sec{margin:0 0 30px}
@@ -211,7 +211,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 /* 休憩タイマー */
 .restbar{max-width:520px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 22px;border-bottom:1px solid var(--line)}
 .restbar[hidden]{display:none}
-.restbar .rt{font-family:"Jost",sans-serif;font-size:24px;font-weight:400;min-width:60px;line-height:1}
+.restbar .rt{font-family:"Inter",sans-serif;font-size:24px;font-weight:400;min-width:60px;line-height:1}
 .restbar .rt.end{color:var(--accent)}
 .restbar .tip{flex:1;font-size:12.5px;color:var(--mute);line-height:1.45}
 .restbar .tip b{display:block;color:var(--ink);font-weight:500;font-size:12px}
@@ -222,7 +222,7 @@ body.resting main{padding-bottom:max(74px,calc(98px - env(safe-area-inset-bottom
 .restpop[hidden]{display:none}
 .restpop .card{width:100%;max-width:340px;background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:20px 20px 18px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)}
 .restpop .pl{font-size:13px;color:var(--mute);margin:0}
-.restpop .pt{font-family:"Jost",sans-serif;font-size:76px;font-weight:300;line-height:1.05;letter-spacing:-.02em;margin:6px 0 2px}
+.restpop .pt{font-family:"Inter",sans-serif;font-size:76px;font-weight:300;line-height:1.05;letter-spacing:-.02em;margin:6px 0 2px}
 .restpop .pt.end{color:var(--accent)}
 .restpop .px{font-size:13px;color:var(--mute);line-height:1.5;min-height:2.9em;margin:0 0 14px}
 .restpop .adj{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
@@ -730,7 +730,7 @@ function renderCal(){
   h+='<div class="stats"><span class="stat">🏋️ <b>'+st.lift+'</b> 筋トレ</span>'+(SHOW_RUN?'<span class="stat">🏃 <b>'+st.run+'</b> ラン</span>':"")+'</div>';
   h+='<p class="sub">'+(SHOW_RUN?"活動日 "+st.active+"日":"今月のセット数 "+st.sets)+weightTrend(statYm)+"</p>";
   h+='<div class="calhead">';
-  ["MON","TUE","WED","THU","FRI","SAT","SUN"].forEach(function(w,i){h+='<div class="h'+(i===6?" sun":"")+'" style="font-family:Jost,sans-serif;font-size:11px;letter-spacing:.18em;text-align:center;padding-bottom:10px">'+w+"</div>";});
+  ["MON","TUE","WED","THU","FRI","SAT","SUN"].forEach(function(w,i){h+='<div class="h'+(i===6?" sun":"")+'" style="font-family:Inter,sans-serif;font-size:11px;letter-spacing:.18em;text-align:center;padding-bottom:10px">'+w+"</div>";});
   h+='</div><div class="cal">';
   var lead=(first.getDay()+6)%7,start=addDays(statYm+"-01",-lead),cells=Math.ceil((lead+n)/7)*7;
   for(var i=0;i<cells;i++){
@@ -842,7 +842,7 @@ function figure(side,lv,uid,counts){
     var x=L[1],y=L[2],left=L[3]==="L",tx=left?-46:246,n=counts&&counts[L[0]]!=null?counts[L[0]]:"";
     return '<path d="M'+x+','+y+' L'+(left?-8:208)+','+y+'" stroke="var(--mute)" stroke-width=".5" stroke-opacity=".8"/><circle cx="'+x+'" cy="'+y+'" r="1.6" fill="var(--ink)"/>'+
       '<text x="'+tx+'" y="'+(y-3)+'" text-anchor="'+(left?"start":"end")+'" font-size="12" font-weight="500" fill="var(--ink)">'+L[0]+'</text>'+
-      '<text x="'+tx+'" y="'+(y+11)+'" text-anchor="'+(left?"start":"end")+'" font-size="11" fill="var(--mute)" font-family="Jost,sans-serif">'+n+(n!==""?" セット":"")+'</text>';
+      '<text x="'+tx+'" y="'+(y+11)+'" text-anchor="'+(left?"start":"end")+'" font-size="11" fill="var(--mute)" font-family="Inter,sans-serif">'+n+(n!==""?" セット":"")+'</text>';
   }).join("");
   return '<svg viewBox="-50 0 300 444" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+(side==="front"?"前面":"背面")+'の筋肉図。色が濃いほどその月のセット数が多い">'+defs+'<defs>'+clips+'</defs>'+skin+'<g'+flip+'>'+mus+'</g>'+lab+'</svg>';
 }
@@ -1299,7 +1299,7 @@ function renderMore(){
   h+="</div></div></section>";
   h+='<section class="sec"><h2>バックアップ</h2><div class="actions" style="margin:0">'+
      (downloadsCap||!window.claude?'<button class="btn" data-act="export">書き出し</button>':"")+'<button class="btn" data-act="showJson">JSON表示</button></div>'+
-     '<textarea id="json" style="display:none;margin-top:10px;min-height:160px;font-family:Jost,monospace;font-size:12px" aria-label="バックアップJSON"></textarea>'+
+     '<textarea id="json" style="display:none;margin-top:10px;min-height:160px;font-family:Inter,monospace;font-size:12px" aria-label="バックアップJSON"></textarea>'+
      '<label class="lbl" for="impFile">バックアップから戻す</label><input type="file" id="impFile" data-f="file" accept=".json,application/json" style="font-size:13px;color:var(--mute)">'+
      '<label class="lbl" for="imp">JSON貼り付け</label><textarea id="imp" placeholder="{&quot;months&quot;: …}"></textarea>'+
      '<div class="actions"><button class="btn" data-act="import">読み込む</button></div><p id="impmsg"></p></section>';
