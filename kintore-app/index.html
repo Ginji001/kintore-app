@@ -233,7 +233,7 @@ body.resting main{padding-bottom:200px}
 .rsedit{display:grid;grid-template-columns:1fr 78px 78px;gap:8px;align-items:center;font-size:14px}
 .rsedit select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:14px;width:100%}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
-#syOwner,#syRepo,#syToken,#kp1,#kp2,#kpJoin{width:100%;box-sizing:border-box}
+#kp1,#kp2,#kpJoin{width:100%;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -1257,11 +1257,7 @@ function renderMore(){
          '<textarea id="keyOut" readonly style="width:100%;box-sizing:border-box;height:90px;font-size:12px">'+esc(sync.keyOut)+'</textarea>':'')+'</details>';
     }else{
       if(sync.keyBlob) h+=keyJoinHtml();
-      h+='<label class="lbl" for="syOwner">ユーザー名</label><input id="syOwner" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.owner||"")+'" placeholder="例：Ginji001">'+
-         '<label class="lbl" for="syRepo">リポジトリ名</label><input id="syRepo" autocomplete="off" autocapitalize="off" spellcheck="false" value="'+esc(c.repo||"")+'" placeholder="例：kintore-data">'+
-         '<label class="lbl" for="syToken">トークン</label><input id="syToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">'+
-         '<div class="actions"><button class="btn solid" data-act="syncConnect">接続する</button></div>'+
-         '';
+      else h+='<p>合言葉の準備中です。少し待って開き直してください</p>';
     }
     h+='<p id="syncmsg"></p></section>';
   }
@@ -1725,7 +1721,6 @@ function handleAct(b){
     if(a==="rest"&&day.rest) day.run=day.run; 
     saveDay(curDate);renderRec();return;
   }
-  if(a==="syncConnect"){syncConnect();return;}
   if(a==="keyJoin"){joinWithKey();return;}
   if(a==="keyMake"){makeKey();return;}
   if(a==="keyCopy"){var kt=sync.keyOut||"";(navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(kt):Promise.reject()).then(function(){syncMsg("コピー済み");},function(){var t=document.getElementById("keyOut");if(t){t.removeAttribute("readonly");t.focus();t.setSelectionRange(0,kt.length);}syncMsg("コピー失敗");});return;}
@@ -1815,11 +1810,6 @@ function keyJoinHtml(){
     '<div class="actions"><button class="btn solid" data-act="keyJoin">つなぐ</button></div>';
 }
 function syncMsg(t){var m=document.getElementById("syncmsg");if(m) m.textContent=t;}
-function syncConnect(){
-  var o=document.getElementById("syOwner").value.trim(),r=document.getElementById("syRepo").value.trim(),t=document.getElementById("syToken").value.trim();
-  if(!o||!r||!t){syncMsg("未入力あり");return;}
-  connectSync(o,r,t,true);
-}
 /* 接続して全月を同期。成功したらブラウザのパスワード管理に保存し、同じアカウントのほかの端末で自動接続できるようにする */
 function connectSync(o,r,t,manual){
   var prev=sync.cfg;sync.cfg={owner:o,repo:r,token:t};syncMsg("確認中…");
