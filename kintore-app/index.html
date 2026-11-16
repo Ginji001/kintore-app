@@ -234,6 +234,29 @@ body.resting main{padding-bottom:max(74px,calc(98px - env(safe-area-inset-bottom
 .rsedit select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:14px;width:100%}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 #kp1,#kp2,#kpJoin{width:100%;box-sizing:border-box}
+
+/* 端末別の表示：タブレット */
+@media (min-width:768px){
+  body{font-size:16px}
+  main{max-width:840px;padding-top:36px;padding-left:40px;padding-right:40px}
+  .tabs .inr{max-width:840px}
+  .restbar{max-width:840px}
+  .sheet .in{max-width:760px}
+  .exedit{grid-template-columns:1fr 120px 104px}
+}
+/* 端末別の表示：PC */
+@media (min-width:1200px){
+  body{font-size:17px}
+  main{max-width:1120px;padding-top:44px;padding-left:48px;padding-right:48px}
+  .tabs .inr{max-width:1120px}
+  .restbar{max-width:1120px}
+  .sheet .in{max-width:860px}
+  .mnum{font-size:96px}
+  .bigdate{font-size:76px}
+  .cell{aspect-ratio:1/.85}
+  .sets{max-width:640px}
+  .exedit{grid-template-columns:1fr 140px 120px}
+}
 </style>
 </head>
 <body>
