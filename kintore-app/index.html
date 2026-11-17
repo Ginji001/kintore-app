@@ -51,9 +51,10 @@ body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;background:va
   font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
 .num,.mnum,.bigdate,.stat b,.prow .v{font-family:"Inter",system-ui,sans-serif;font-variant-numeric:tabular-nums}
 button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{min-width:0}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-main{max-width:520px;margin:0 auto;padding:28px 22px 40px;padding-bottom:max(16px,calc(40px - env(safe-area-inset-bottom,0px)));height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+main{max-width:520px;margin:0 auto;padding:28px 22px 40px;padding-bottom:max(16px,calc(40px - env(safe-area-inset-bottom,0px)));height:100%;overflow-y:auto;overflow-x:hidden;overflow-x:clip;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 
 /* 月ヘッダー */
 .mhead{display:flex;align-items:flex-start;gap:18px;margin-bottom:26px}
@@ -88,7 +89,8 @@ main{max-width:520px;margin:0 auto;padding:28px 22px 40px;padding-bottom:max(16p
 .x{margin-left:auto;background:none;border:none;color:var(--faint);font-size:20px;line-height:1;padding:4px 6px}
 .x:hover{color:var(--warn)}
 .target{font-size:12.5px;color:var(--mute);margin:2px 0 10px}
-.sets{display:grid;grid-template-columns:20px 1fr 1fr 28px;gap:6px 10px;align-items:center}
+.sets{display:grid;grid-template-columns:20px minmax(0,1fr) minmax(0,1fr) 28px;gap:6px 10px;align-items:center}
+.sets>*{min-width:0}
 .sets .sn{font-family:"Inter",sans-serif;color:var(--faint);font-size:13px;text-align:right}
 .sets select,.sets input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px}
 .sets input{font-family:"Inter",sans-serif}
@@ -155,7 +157,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .bact button.sub,.bform .btns button.sub{border-color:var(--line);color:var(--mute);margin:0;font-size:13px}
 .bmsg{font-size:13px;color:var(--accent);margin:-8px 0 14px;min-height:1em}
 .bform{border:1px solid var(--line);border-radius:12px;padding:12px 12px 6px;margin:0 0 22px}
-.bform .g{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.bform .g{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px}
 .bform label{display:flex;flex-direction:column;font-size:11px;color:var(--mute);gap:3px}
 .bform input,.bform select{font:inherit;font-size:16px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%;box-sizing:border-box}
 .bform input.miss{border-color:var(--warn)}
@@ -189,7 +191,8 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .sec{margin:0 0 30px}
 .sec h2{font-size:15px;font-weight:700;margin:0 0 10px}
 .sec p{color:var(--mute);font-size:13.5px;margin:0 0 10px}
-.exedit{display:grid;grid-template-columns:1fr 96px 84px;gap:6px 8px;align-items:center;font-size:14px}
+.exedit{display:grid;grid-template-columns:minmax(0,1fr) 96px 84px;gap:6px 8px;align-items:center;font-size:14px}
+.exedit>*{min-width:0}
 .exedit select,.exedit input{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:14px;width:100%}
 .scroll{overflow-x:auto}
 
@@ -202,7 +205,7 @@ textarea{width:100%;min-height:72px;background:var(--panel);border:1px solid var
 .sheet h4{font-size:12px;color:var(--mute);font-weight:400;margin:16px 0 6px}
 .picks{display:flex;flex-wrap:wrap;gap:6px}
 .picks button{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;font-size:14px}
-.newex{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.newex{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:8px}
 .newex input,.newex select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:15px;width:100%}
 .newex .full{grid-column:1/-1}
 
@@ -235,7 +238,8 @@ body.resting main{padding-bottom:max(74px,calc(98px - env(safe-area-inset-bottom
 .restpop .adj span{display:block;font-size:12px;color:var(--mute);margin-bottom:6px}
 .restpop .adj button{background:var(--panel);border:1px solid var(--line);border-radius:999px;width:52px;height:38px;font-size:15px;color:var(--ink);margin:0 2px}
 .restpop .pa{display:flex;gap:10px;justify-content:center}
-.rsedit{display:grid;grid-template-columns:1fr 78px 78px;gap:8px;align-items:center;font-size:14px}
+.rsedit{display:grid;grid-template-columns:minmax(0,1fr) 78px 78px;gap:8px;align-items:center;font-size:14px}
+.rsedit>*{min-width:0}
 .rsedit select{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:14px;width:100%}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 #kp1,#kp2,#kpJoin{width:100%;box-sizing:border-box}
@@ -247,7 +251,7 @@ body.resting main{padding-bottom:max(74px,calc(98px - env(safe-area-inset-bottom
   .tabs .inr{max-width:840px}
   .restbar{max-width:840px}
   .sheet .in{max-width:760px}
-  .exedit{grid-template-columns:1fr 120px 104px}
+  .exedit{grid-template-columns:minmax(0,1fr) 120px 104px}
 }
 /* 端末別の表示：PC */
 @media (min-width:1200px){
@@ -260,7 +264,7 @@ body.resting main{padding-bottom:max(74px,calc(98px - env(safe-area-inset-bottom
   .bigdate{font-size:76px}
   .cell{aspect-ratio:1/.85}
   .sets{max-width:640px}
-  .exedit{grid-template-columns:1fr 140px 120px}
+  .exedit{grid-template-columns:minmax(0,1fr) 140px 120px}
 }
 </style>
 </head>
