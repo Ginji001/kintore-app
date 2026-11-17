@@ -43,3 +43,5 @@ self.addEventListener("fetch", (e) => {
   }
   e.respondWith(caches.match(req).then((hit) => hit || fetch(req)));
 });
+
+/* redeploy trigger 2026-11-17 */
