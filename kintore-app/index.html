@@ -1800,7 +1800,7 @@ app.addEventListener("input",function(ev){
   var t=ev.target,f=t.dataset.f;if(!f) return;
   if(f==="r"){var day=getDay(curDate,true);day.entries[+t.dataset.i].sets[+t.dataset.j].r=t.value===""?"":Number(t.value);
     if(curDate===today&&Number(t.value)>0){var nw=Date.now();if(!day.t0) day.t0=nw;day.t1=nw;}
-    saveDay(curDate);}
+    saveDay(curDate);if(curDate===today&&rest.end&&dayDone(day)) stopRest();}
   else if(f==="note"){var d2=getDay(curDate,true);d2.note=t.value;saveDay(curDate);}
 });
 app.addEventListener("change",function(ev){
@@ -1813,7 +1813,7 @@ app.addEventListener("change",function(ev){
   }
   if(f==="r"){
     var rd=getDay(curDate,false),re=rd&&rd.entries[+t.dataset.i];
-    if(re&&curDate===today&&t.value!==""&&Number(t.value)>0) startRest(re.ex);
+    if(re&&curDate===today&&t.value!==""&&Number(t.value)>0){if(dayDone(rd)){if(rest.end) stopRest();}else startRest(re.ex);}
     if(recSig()!==recShown) sync.repaint();
     return;
   }
