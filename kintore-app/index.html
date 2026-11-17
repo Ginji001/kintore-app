@@ -75,6 +75,11 @@ main{max-width:520px;margin:0 auto;padding:28px 22px 40px;padding-bottom:max(16p
 .chip{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 14px;font-size:14px;color:var(--mute)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .today-btn{color:var(--accent);border-color:var(--accent)}
+.startbar{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:1px solid var(--ink);border-radius:12px;background:var(--ink);color:var(--bg);font-size:16px;font-weight:700;margin:0 0 18px;cursor:pointer}
+.totbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:0 0 18px;font-size:14px;color:var(--mute)}
+.totbar .tv{display:flex;align-items:baseline;gap:10px;color:var(--ink)}
+.totbar .tv b{font-family:"Inter",system-ui,sans-serif;font-variant-numeric:tabular-nums;font-size:22px;font-weight:500}
+.totbar .tv small{font-size:12px;color:var(--mute)}
 
 .entry{border-top:1px solid var(--line);padding:16px 0 14px}
 .etop{display:flex;align-items:baseline;gap:10px}
@@ -517,7 +522,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
     Object.keys(this.timer).forEach(function(n){clearTimeout(self.timer[n]);delete self.timer[n];});
     return Promise.all(names.map(function(n){return self.doc(n).catch(function(){});}));
   },
-  /* 起動時・アプリに戻ったとき：GitHub上の全ファイルを確認し、ほかの端末で変わった月と送信待ちを同期する */
+  /* 起動時・アプリに戻ったとき：全ドキュメントを必ず引き合わせて同期する（端末内にだけある記録も必ず送る） */
   startup:function(){
     if(!this.on()) return Promise.resolve();
     if(this.booting) return this.booting;
@@ -534,11 +539,7 @@ var sync={cfg:null,sha:{},chain:{},timer:{},last:{},pending:{},err:null,lastAt:n
       Object.keys(remote).forEach(function(n){if(names.indexOf(n)<0) names.push(n);});
       names.forEach(function(n){self.last[n]=Date.now();});
       return Promise.all(names.map(function(n){return n==="settings"?ensure("settings",defaultSettings):ensure(n,function(){return {days:{}};});})).then(function(){
-        var todo=names.filter(function(n){
-          if(self.pending[n]) return true;
-          if(remote[n]) return remote[n]!==self.sha[n];
-          return !self.isEmpty(n);
-        });
+        var todo=names.slice();
         Object.keys(self.timer).forEach(function(n){if(todo.indexOf(n)>=0){clearTimeout(self.timer[n]);delete self.timer[n];}});
         /* 1件ずつ順番に（同時に書き込むと衝突しやすいため） */
         return todo.reduce(function(p,n){return p.then(function(){return self.doc(n).catch(function(){});});},Promise.resolve());
@@ -666,8 +667,8 @@ function renderRec(){
   if(plan) ph.push("<b>"+esc(plan.label)+"</b>"); else ph.push("<b>休養日</b>");
   if(wi) ph.push(esc(wi.text)+(wi.phase?"："+esc(wi.phase):""));
   h+='<p class="phase">'+ph.join("　")+"</p>";
-  if(day&&day.t0){var st0=new Date(day.t0);h+='<p class="target" style="margin:-8px 0 16px">総合タイム <b id="totT">'+totText(day)+'</b>（開始 '+st0.getHours()+":"+pad(st0.getMinutes())+'）</p>';}
-  else if(curDate===today&&plan&&!(day&&day.rest)) h+='<p style="margin:-8px 0 16px"><button class="btn solid" data-act="start">トレーニング開始</button></p>';
+  if(day&&day.t0){var st0=new Date(day.t0);h+='<div class="totbar"><span>総合タイム</span><span class="tv"><b id="totT">'+totText(day)+'</b><small>開始 '+st0.getHours()+":"+pad(st0.getMinutes())+'</small></span></div>';}
+  else if(curDate===today&&plan&&!(day&&day.rest)) h+='<button class="startbar" data-act="start">▶ トレーニング開始</button>';
   if(HK_ON&&day&&day.hk) h+='<p class="target" style="margin:-8px 0 16px">'+esc(hkText(day.hk))+"</p>";
   var run=day&&day.run,rest=day&&day.rest;
   h+='<div class="toggles">'+(SHOW_RUN?'<button class="chip" data-act="run" aria-pressed="'+!!run+'">🏃 ラン</button>':"")+
