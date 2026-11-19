@@ -1903,12 +1903,17 @@ function joinWithKey(){
 function stripHash(){if(location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}}
 function joinFromHash(){
   var m=/#j=([^#\s]+)/.exec(location.hash||"");stripHash();
-  if(!m||sync.cfg||!sync.keyBlob) return Promise.resolve(false);
+  if(!m) return Promise.resolve(false);
   var pass=m[1];try{pass=decodeURIComponent(pass);}catch(e){}
-  return unlockCfg(sync.keyBlob,pass).then(function(c){
-    if(!c||!c.owner||!c.repo||!c.token) return false;
-    return connectSync(c.owner,c.repo,c.token,false);
-  }).then(function(ok){if(ok){sync.keyBlob=null;rerender();}return !!ok;},function(){return false;});
+  var getBlob=sync.keyBlob?Promise.resolve(sync.keyBlob):fetch("sync-key.json",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;},function(){return null;});
+  return getBlob.then(function(blob){
+    if(!blob||!blob.ct) return false;
+    return unlockCfg(blob,pass).then(function(c){
+      if(!c||!c.owner||!c.repo||!c.token) return false;
+      if(sync.cfg&&sync.cfg.owner===c.owner&&sync.cfg.repo===c.repo&&sync.cfg.token===c.token) return false;
+      return connectSync(c.owner,c.repo,c.token,false);
+    }).then(function(ok){if(ok){sync.keyBlob=null;rerender();}return !!ok;},function(){return false;});
+  });
 }
 function makeKey(){
   var p1=(document.getElementById("kp1")||{}).value||"",p2=(document.getElementById("kp2")||{}).value||"";
@@ -1949,7 +1954,7 @@ if(window.claude&&typeof window.claude.use==="function"){
   sync.busy=sync.on(); // 起動時の同期が終わるまで個別の同期は待つ
   idb.open().then(function(){store.mode="idb";},function(){}).then(go).catch(function(){}).then(function(){
     if(!sync.on()) return checkSyncKey().then(joinFromHash).then(function(j){if(j) return sync.startup();});
-    stripHash();return sync.startup();
+    return joinFromHash().then(function(){return sync.startup();});
   });
 }
 (function connect(){
