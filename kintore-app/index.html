@@ -1899,6 +1899,17 @@ function joinWithKey(){
     return connectSync(c.owner,c.repo,c.token,false);
   }).then(function(ok){if(ok){sync.keyBlob=null;rerender();}},function(e){syncMsg(e&&e.message||String(e));});
 }
+/* ブックマークの合言葉（#j=合言葉）で開いたら自動で参加する。合言葉はアドレスバーと履歴に残さない */
+function stripHash(){if(location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}}
+function joinFromHash(){
+  var m=/#j=([^#\s]+)/.exec(location.hash||"");stripHash();
+  if(!m||sync.cfg||!sync.keyBlob) return Promise.resolve(false);
+  var pass=m[1];try{pass=decodeURIComponent(pass);}catch(e){}
+  return unlockCfg(sync.keyBlob,pass).then(function(c){
+    if(!c||!c.owner||!c.repo||!c.token) return false;
+    return connectSync(c.owner,c.repo,c.token,false);
+  }).then(function(ok){if(ok){sync.keyBlob=null;rerender();}return !!ok;},function(){return false;});
+}
 function makeKey(){
   var p1=(document.getElementById("kp1")||{}).value||"",p2=(document.getElementById("kp2")||{}).value||"";
   if(p1.length<12){syncMsg("12文字以上");return;}
@@ -1937,8 +1948,8 @@ if(window.claude&&typeof window.claude.use==="function"){
   if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
   sync.busy=sync.on(); // 起動時の同期が終わるまで個別の同期は待つ
   idb.open().then(function(){store.mode="idb";},function(){}).then(go).catch(function(){}).then(function(){
-    if(!sync.on()) return checkSyncKey();
-    return sync.startup();
+    if(!sync.on()) return checkSyncKey().then(joinFromHash).then(function(j){if(j) return sync.startup();});
+    stripHash();return sync.startup();
   });
 }
 (function connect(){
