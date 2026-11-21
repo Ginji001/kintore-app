@@ -1578,6 +1578,7 @@ var rest={end:0,ex:"",tip:"",iv:null,buzz:false,beep:0};
 var actx=null;
 function audioOn(){
   try{
+    if(navigator.audioSession) navigator.audioSession.type="playback";
     if(!actx){var AC=window.AudioContext||window.webkitAudioContext;if(!AC) return;actx=new AC();}
     if(actx.state==="suspended") actx.resume();
     var b=actx.createBuffer(1,1,22050),src=actx.createBufferSource();src.buffer=b;src.connect(actx.destination);src.start(0);
@@ -1608,18 +1609,8 @@ function makeTrack(ms){
   return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));
 }
 function trackOn(){return !!(restAu&&!restAu.paused&&!restAu.ended);}
-/* 音声トラック再生を使う（2026-11-21、v59で復活）。Web AudioだけだとiPhoneの消音スイッチで鳴らず、画面を消すとタイマー自体が止まるため。ロック画面には「休憩タイマー」と表示される */
-function playTrack(){
-  try{
-    if(!rest.end) return;
-    var ms=rest.end-Date.now();if(ms<=0) return;
-    var el=auEl(),old=el._tk;
-    el._tk=makeTrack(ms);el.src=el._tk;el._t0=Date.now();rest.tkT0=el._t0;
-    if(old&&old!==el._tk) URL.revokeObjectURL(old);
-    var p=el.play();if(p&&p.catch) p.catch(function(){});
-    if(navigator.mediaSession&&window.MediaMetadata){try{navigator.mediaSession.metadata=new MediaMetadata({title:"休憩タイマー",artist:"筋トレ記録"});}catch(e){}}
-  }catch(e){}
-}
+/* ロック画面に再生表示を出さないため、音声トラック再生は使わない（2026-11-21、v61。v59で復活させたが、ロック画面の表示タップで固まるためユーザー指示で撤回）。音はWeb Audioのみ */
+function playTrack(){}
 /* 最初の再生がジェスチャー外で止められた場合、次のタップで残り時間ぶんを作り直して再生する（途中へのシークはiOSで固まるため使わない） */
 function trackKick(){
   try{
