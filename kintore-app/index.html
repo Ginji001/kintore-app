@@ -1613,23 +1613,26 @@ function playTrack(){
   try{
     if(!rest.end) return;
     var ms=rest.end-Date.now();if(ms<=0) return;
-    var el=auEl();
-    if(el._tk) URL.revokeObjectURL(el._tk);
+    var el=auEl(),old=el._tk;
     el._tk=makeTrack(ms);el.src=el._tk;el._t0=Date.now();rest.tkT0=el._t0;
+    if(old&&old!==el._tk) URL.revokeObjectURL(old);
     var p=el.play();if(p&&p.catch) p.catch(function(){});
     if(navigator.mediaSession&&window.MediaMetadata){try{navigator.mediaSession.metadata=new MediaMetadata({title:"休憩タイマー",artist:"筋トレ記録"});}catch(e){}}
   }catch(e){}
 }
-/* 最初の再生がジェスチャー外で止められた場合、次のタップで経過時間に合わせて再生し直す */
+/* 最初の再生がジェスチャー外で止められた場合、次のタップで残り時間ぶんを作り直して再生する（途中へのシークはiOSで固まるため使わない） */
 function trackKick(){
   try{
-    if(!rest.end||!restAu||!restAu.src||trackOn()||restAu._t0!==rest.tkT0) return;
-    var el=restAu,elapsed=(Date.now()-(el._t0||Date.now()))/1000;
-    if(elapsed>0&&el.duration&&elapsed<el.duration){try{el.currentTime=elapsed;}catch(e){}}
-    var p=el.play();if(p&&p.catch) p.catch(function(){});
+    if(!rest.end||!restAu||trackOn()||restAu._t0!==rest.tkT0) return;
+    playTrack();
   }catch(e){}
 }
-function stopTrack(){try{if(restAu){restAu.pause();}}catch(e){}}
+function stopTrack(){
+  try{
+    if(restAu){restAu.pause();if(restAu._tk){URL.revokeObjectURL(restAu._tk);restAu._tk=null;}restAu.removeAttribute("src");restAu.load();}
+    if(navigator.mediaSession) navigator.mediaSession.metadata=null;
+  }catch(e){}
+}
 function beep(long){
   try{
     if(!actx) return;if(actx.state==="suspended") actx.resume();
