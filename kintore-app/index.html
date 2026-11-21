@@ -1584,6 +1584,7 @@ function audioOn(){
     var b=actx.createBuffer(1,1,22050),src=actx.createBufferSource();src.buffer=b;src.connect(actx.destination);src.start(0);
   }catch(e){}
   trackKick();
+  schedRestBeeps();
 }
 ["touchend","pointerdown","keydown"].forEach(function(t){document.addEventListener(t,audioOn,{capture:true,passive:true});});
 /* 画面を消しても鳴らす：休憩の残り時間ぶんの音声（無音→5秒前から毎秒ピッ→0秒で長めのピー）を作って再生 */
@@ -1635,6 +1636,27 @@ function beep(long){
     if(long) one(t0,0.8,1320); else {one(t0,0.08,880);one(t0+0.14,0.08,880);}
   }catch(e){}
 }
+/* ロック画面に何も出さずに鳴らすため、休憩の開始時に終了までの音をWeb Audioで予約しておく（v62）。audioSession=playback（audioOn内）と合わせ、消音スイッチ・画面オフでも鳴るようにする */
+var restSched=[];
+function schedActive(){return !!(rest.sched&&actx&&actx.state==="running");}
+function cancelSched(){for(var i=0;i<restSched.length;i++){try{restSched[i].stop();}catch(e){}try{restSched[i].disconnect();}catch(e){}}restSched=[];}
+function schedOne(t,d,f){
+  var o=actx.createOscillator(),g=actx.createGain();o.type="sine";o.frequency.value=f;
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.6,t+0.01);
+  g.gain.setValueAtTime(0.6,t+Math.max(0.02,d-0.02));g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+d+0.05);restSched.push(o);
+}
+function schedRestBeeps(){
+  cancelSched();rest.sched=false;
+  try{
+    if(!actx||actx.state!=="running"||!rest.end) return;
+    var remain=(rest.end-Date.now())/1000;if(remain<=0) return;
+    var tEnd=actx.currentTime+remain;
+    for(var k=5;k>=1;k--){var t=tEnd-k;if(t>actx.currentTime+0.05){schedOne(t,0.08,880);schedOne(t+0.14,0.08,880);}}
+    schedOne(tEnd,0.8,1320);
+    rest.sched=true;
+  }catch(e){}
+}
 var REST_DEF={main:150,light:75};
 function restKind(name){var p=exInfo(name).p;return (p==="肩"||p==="腕"||p==="腹・体幹")?"light":"main";}
 function restDef(k){var st=settings(),r=st&&st.rest;var v=r&&Number(r[k]);return v>0?v:REST_DEF[k];}
@@ -1644,8 +1666,8 @@ function startRest(name){
   rest.ex=name;rest.end=Date.now()+restSec(name)*1000;rest.tip=l[Math.floor(Math.random()*l.length)];rest.buzz=false;rest.beep=0;audioOn();playTrack();
   clearInterval(rest.iv);rest.iv=setInterval(drawRest,250);rest.pop=true;drawRest();
 }
-function stopRest(){stopTrack();clearInterval(rest.iv);rest.iv=null;rest.end=0;rest.pop=false;drawRest();}
-function restAdj(sec){if(!rest.end) return;var now=Date.now();rest.end=Math.max(now+1000,Math.max(rest.end,now)+sec*1000);rest.buzz=false;rest.beep=0;playTrack();drawRest();}
+function stopRest(){cancelSched();rest.sched=false;stopTrack();clearInterval(rest.iv);rest.iv=null;rest.end=0;rest.pop=false;drawRest();}
+function restAdj(sec){if(!rest.end) return;var now=Date.now();rest.end=Math.max(now+1000,Math.max(rest.end,now)+sec*1000);rest.buzz=false;rest.beep=0;schedRestBeeps();drawRest();}
 function fmtMS(s){return Math.floor(s/60)+":"+pad(s%60);}
 function drawRest(){
   var el=document.getElementById("restbar");if(!el) return;
@@ -1653,8 +1675,8 @@ function drawRest(){
   if(!rest.end){el.hidden=true;if(pp) pp.hidden=true;document.body.classList.remove("resting");return;}
   var left=Math.ceil((rest.end-Date.now())/1000);
   if(left<=-20){stopRest();return;}
-  if(left>0&&left<=5&&left!==rest.beep&&(rest.end-Date.now())>left*1000-600){rest.beep=left;if(!trackOn()) beep(false);}
-  if(left<=0&&!rest.buzz){rest.buzz=true;if(left>-2&&!trackOn()) beep(true);try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
+  if(left>0&&left<=5&&left!==rest.beep&&(rest.end-Date.now())>left*1000-600){rest.beep=left;if(!schedActive()) beep(false);}
+  if(left<=0&&!rest.buzz){rest.buzz=true;if(left>-2&&!schedActive()) beep(true);try{if(navigator.vibrate) navigator.vibrate([200,100,200]);}catch(e){}}
   if(!el.firstChild) el.innerHTML='<span class="rt" id="rtT" data-act="restOpen"></span><span class="tip" data-act="restOpen"><b id="rtL"></b><span id="rtX"></span></span>'+
     '<span class="rbtn"><button class="mini" data-act="restAdd" aria-label="休憩を30秒延ばす">+30</button><button class="mini" data-act="restStop" aria-label="休憩を終える">×</button></span>';
   var s=Math.max(0,left);
